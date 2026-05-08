@@ -2,3 +2,7 @@ fastapi
 uvicorn
 pydantic
 python-dotenv
+duckdb
+pandas
+python-multipart
+openpyxl

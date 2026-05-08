@@ -14,6 +14,7 @@ class Settings(BaseModel):
     app_version: str = "0.1.0"
     environment: str = "development"
     cors_origins: list[str] = ["*"]
+    uploads_dir: Path = BASE_DIR / "backend" / "uploads"
 
 
 @lru_cache
