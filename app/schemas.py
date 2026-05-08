@@ -27,3 +27,13 @@ class AskRequest(BaseModel):
 class AskResponse(BaseModel):
     answer: str
     sql: str
+
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class ChatRequest(BaseModel):
+    dataset_id: str
+    messages: list[ChatMessage]
