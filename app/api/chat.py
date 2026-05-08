@@ -16,11 +16,11 @@ def _sse_event(event: str, payload: dict[str, object]) -> str:
 
 
 def _chat_stream(question: str, dataset_id: str) -> Iterator[str]:
-    yield _sse_event("thought", {"message": "Analyzing your question"})
-    yield _sse_event("thought", {"message": "Running tools on selected dataset"})
-
     try:
         result = ask_dataset(question=question, dataset_id=dataset_id)
+        transitions = result.get("transitions", [])
+        for node in transitions:
+            yield _sse_event("thought", {"message": f"{node} node"})
         yield _sse_event("final", {"answer": result["answer"], "sql": result["sql"]})
     except KeyError:
         yield _sse_event(
