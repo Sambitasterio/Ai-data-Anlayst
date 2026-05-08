@@ -190,7 +190,7 @@ ai-data-analyst/
 | 5 | Frontend scaffold (Next.js + Tailwind + shadcn) | ✅ | — | `start phase 5` |
 | 6 | Chat UI with Vercel AI SDK streaming | ✅ | — | `start phase 6` |
 | 7 | File upload UI (dropzone + preview) | ✅ | — | `start phase 7` |
-| 8 | Add `run_python` + `make_chart` tools | ⬜ | — | `start phase 8` |
+| 8 | Add `run_python` + `make_chart` tools | ✅ | — | `start phase 8` |
 | 9 | LangGraph multi-node flow (Plan → Execute → Reflect) | ⬜ | — | `start phase 9` |
 | 10 | Plotly chart rendering on frontend | ⬜ | — | `start phase 10` |
 | 11 | Code preview panel (Shiki SQL/Python highlighting) | ⬜ | — | `start phase 11` |
@@ -270,9 +270,9 @@ ai-data-analyst/
 
 ### Phase 8 — More tools
 
-- [ ] `run_python(code, dataset_id)` tool with sandboxed exec
-- [ ] `make_chart(spec)` tool returning Plotly JSON
-- [ ] Tool-use logging (which tool ran, args, result)
+- [x] `run_python(code, dataset_id)` tool with sandboxed exec
+- [x] `make_chart(spec)` tool returning Plotly JSON
+- [x] Tool-use logging (which tool ran, args, result)
 
 ### Phase 9 — LangGraph flow
 

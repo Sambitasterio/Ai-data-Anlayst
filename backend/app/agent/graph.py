@@ -3,7 +3,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 
 from app.agent.prompts import build_system_prompt
-from app.agent.tools import get_run_sql_tool
+from app.agent.tools import get_make_chart_tool, get_run_python_tool, get_run_sql_tool
 from app.core.config import get_settings
 from app.core.duckdb_engine import get_duckdb_engine
 
@@ -41,7 +41,7 @@ def ask_dataset(question: str, dataset_id: str) -> dict[str, str]:
     )
 
     llm = ChatOpenAI(api_key=settings.openai_api_key, model="gpt-4o-mini", temperature=0)
-    tools = [get_run_sql_tool()]
+    tools = [get_run_sql_tool(), get_run_python_tool(), get_make_chart_tool()]
     agent = create_tool_calling_agent(llm=llm, tools=tools, prompt=prompt)
     executor = AgentExecutor(agent=agent, tools=tools, verbose=False)
     result = executor.invoke({"input": question})
