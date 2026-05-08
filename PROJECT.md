@@ -191,7 +191,7 @@ ai-data-analyst/
 | 6 | Chat UI with Vercel AI SDK streaming | ✅ | — | `start phase 6` |
 | 7 | File upload UI (dropzone + preview) | ✅ | — | `start phase 7` |
 | 8 | Add `run_python` + `make_chart` tools | ✅ | — | `start phase 8` |
-| 9 | LangGraph multi-node flow (Plan → Execute → Reflect) | ⬜ | — | `start phase 9` |
+| 9 | LangGraph multi-node flow (Plan → Execute → Reflect) | ✅ | — | `start phase 9` |
 | 10 | Plotly chart rendering on frontend | ⬜ | — | `start phase 10` |
 | 11 | Code preview panel (Shiki SQL/Python highlighting) | ⬜ | — | `start phase 11` |
 | 12 | Conversation memory + history sidebar | ⬜ | — | `start phase 12` |
@@ -276,9 +276,9 @@ ai-data-analyst/
 
 ### Phase 9 — LangGraph flow
 
-- [ ] Refactor agent into LangGraph: Plan → Execute → Reflect → Respond
-- [ ] Retry-on-error logic in Reflect node
-- [ ] Stream node transitions to frontend (for the "thinking" sidebar)
+- [x] Refactor agent into LangGraph: Plan → Execute → Reflect → Respond
+- [x] Retry-on-error logic in Reflect node
+- [x] Stream node transitions to frontend (for the "thinking" sidebar)
 
 ### Phase 10 — Plotly on frontend
 

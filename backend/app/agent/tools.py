@@ -57,10 +57,23 @@ def run_python(code: str, dataset_id: str) -> str:
     else:
         dataframe = pd.read_excel(file_path)
 
-    safe_globals = {"__builtins__": {"len": len, "min": min, "max": max, "sum": sum}}
-    safe_locals: dict[str, object] = {"df": dataframe, "result": None}
+    safe_globals: dict[str, object] = {
+        "__builtins__": {
+            "len": len,
+            "min": min,
+            "max": max,
+            "sum": sum,
+            "int": int,
+            "float": float,
+            "str": str,
+            "abs": abs,
+            "round": round,
+        },
+        "df": dataframe,
+    }
+    safe_locals: dict[str, object] = {"result": None}
     exec(code, safe_globals, safe_locals)
-    result = safe_locals.get("result")
+    result = safe_locals.get("result", safe_globals.get("result"))
 
     _log_tool_use(
         tool="run_python",
