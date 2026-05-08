@@ -182,13 +182,13 @@ ai-data-analyst/
 
 | # | Phase | Status | Owner | Command to start |
 |---|---|---|---|---|
-| 0 | Project bootstrap (folders, .env, .gitignore, git init) | 🟡 | — | `start phase 0` |
-| 1 | Backend scaffold (FastAPI skeleton, health route) | ⬜ | — | `start phase 1` |
-| 2 | Data ingestion (CSV upload → DuckDB) | ⬜ | — | `start phase 2` |
-| 3 | Basic LangChain agent with `run_sql` tool | ⬜ | — | `start phase 3` |
-| 4 | Streaming `/chat` endpoint (SSE) | ⬜ | — | `start phase 4` |
-| 5 | Frontend scaffold (Next.js + Tailwind + shadcn) | ⬜ | — | `start phase 5` |
-| 6 | Chat UI with Vercel AI SDK streaming | ⬜ | — | `start phase 6` |
+| 0 | Project bootstrap (folders, .env, .gitignore, git init) | ✅ | — | `start phase 0` |
+| 1 | Backend scaffold (FastAPI skeleton, health route) | ✅ | — | `start phase 1` |
+| 2 | Data ingestion (CSV upload → DuckDB) | ✅ | — | `start phase 2` |
+| 3 | Basic LangChain agent with `run_sql` tool | ✅ | — | `start phase 3` |
+| 4 | Streaming `/chat` endpoint (SSE) | ✅ | — | `start phase 4` |
+| 5 | Frontend scaffold (Next.js + Tailwind + shadcn) | ✅ | — | `start phase 5` |
+| 6 | Chat UI with Vercel AI SDK streaming | ✅ | — | `start phase 6` |
 | 7 | File upload UI (dropzone + preview) | ⬜ | — | `start phase 7` |
 | 8 | Add `run_python` + `make_chart` tools | ⬜ | — | `start phase 8` |
 | 9 | LangGraph multi-node flow (Plan → Execute → Reflect) | ⬜ | — | `start phase 9` |
@@ -209,57 +209,57 @@ ai-data-analyst/
 - [x] `backend/` and `frontend/` folders created
 - [x] `.gitignore` (Python + Node)
 - [x] `.env.example` with placeholder keys
-- [ ] `git init` + initial commit
+- [x] `git init` + initial commit
 - [x] Root `README.md` with quickstart
 
 ### Phase 1 — Backend scaffold
 
-- [ ] `requirements.txt` (fastapi, uvicorn, pydantic, python-dotenv)
-- [ ] `app/main.py` with FastAPI app + CORS
-- [ ] `GET /health` route returning `{"status": "ok"}`
-- [ ] `app/core/config.py` loading env vars
-- [ ] Verify `uvicorn app.main:app --reload` runs
+- [x] `requirements.txt` (fastapi, uvicorn, pydantic, python-dotenv)
+- [x] `app/main.py` with FastAPI app + CORS
+- [x] `GET /health` route returning `{"status": "ok"}`
+- [x] `app/core/config.py` loading env vars
+- [x] Verify `uvicorn app.main:app --reload` runs
 
 ### Phase 2 — Data ingestion
 
-- [ ] Add `duckdb` and `pandas` to requirements
-- [ ] `POST /upload` accepts CSV/Excel multipart upload
-- [ ] Files saved to `backend/uploads/` with UUID filename
-- [ ] `app/core/duckdb_engine.py` registers each upload as a DuckDB view
-- [ ] `GET /datasets` lists uploaded files + their columns/dtypes
-- [ ] `GET /datasets/{id}/preview` returns first 20 rows
+- [x] Add `duckdb` and `pandas` to requirements
+- [x] `POST /upload` accepts CSV/Excel multipart upload
+- [x] Files saved to `backend/uploads/` with UUID filename
+- [x] `app/core/duckdb_engine.py` registers each upload as a DuckDB view
+- [x] `GET /datasets` lists uploaded files + their columns/dtypes
+- [x] `GET /datasets/{id}/preview` returns first 20 rows
 
 ### Phase 3 — Basic LangChain agent
 
-- [ ] Add `langchain`, `langchain-openai` to requirements
-- [ ] `app/agent/tools.py` → `run_sql(query, dataset_id)` tool
-- [ ] `app/agent/prompts.py` → system prompt with column schema injected
-- [ ] `app/agent/graph.py` → simple agent (no LangGraph yet, just AgentExecutor)
-- [ ] Test: ask "how many rows?" on a sample CSV
+- [x] Add `langchain`, `langchain-openai` to requirements
+- [x] `app/agent/tools.py` → `run_sql(query, dataset_id)` tool
+- [x] `app/agent/prompts.py` → system prompt with column schema injected
+- [x] `app/agent/graph.py` → simple agent (no LangGraph yet, just AgentExecutor)
+- [x] Test: ask "how many rows?" on a sample CSV
 
 ### Phase 4 — Streaming `/chat` endpoint
 
-- [ ] `POST /chat` accepts `{messages, dataset_id}`
-- [ ] Returns Server-Sent Events stream
-- [ ] Streams agent thoughts + final answer
-- [ ] Test with `curl --no-buffer`
+- [x] `POST /chat` accepts `{messages, dataset_id}`
+- [x] Returns Server-Sent Events stream
+- [x] Streams agent thoughts + final answer
+- [x] Test with `curl --no-buffer`
 
 ### Phase 5 — Frontend scaffold
 
-- [ ] `npx create-next-app@latest frontend --ts --tailwind --app`
-- [ ] Install `shadcn/ui` + add Button, Card, Input, ScrollArea
-- [ ] Install `framer-motion`, `@tanstack/react-query`, `zustand`
-- [ ] Configure dark mode (`next-themes`)
-- [ ] Landing page with hero + "Get Started" CTA
+- [x] `npx create-next-app@latest frontend --ts --tailwind --app`
+- [x] Install `shadcn/ui` + add Button, Card, Input, ScrollArea
+- [x] Install `framer-motion`, `@tanstack/react-query`, `zustand`
+- [x] Configure dark mode (`next-themes`)
+- [x] Landing page with hero + "Get Started" CTA
 
 ### Phase 6 — Chat UI with streaming
 
-- [ ] Install `ai` (Vercel AI SDK)
-- [ ] `app/api/chat/route.ts` proxies to FastAPI SSE
-- [ ] `components/chat/chat-window.tsx` using `useChat`
-- [ ] Message bubbles (user vs assistant) with markdown rendering
-- [ ] Auto-scroll on new tokens
-- [ ] Stop / regenerate buttons
+- [x] Install `ai` (Vercel AI SDK)
+- [x] `app/api/chat/route.ts` proxies to FastAPI SSE
+- [x] `components/chat/chat-window.tsx` using `useChat`
+- [x] Message bubbles (user vs assistant) with markdown rendering
+- [x] Auto-scroll on new tokens
+- [x] Stop / regenerate buttons
 
 ### Phase 7 — File upload UI
 

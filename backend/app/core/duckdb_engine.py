@@ -60,13 +60,27 @@ class DuckDBEngine:
     def list_datasets(self) -> list[DatasetRecord]:
         return list(self.datasets.values())
 
-    def preview_dataset(self, dataset_id: str, limit: int = 20) -> list[dict[str, object]]:
+    def get_dataset(self, dataset_id: str) -> DatasetRecord:
         record = self.datasets.get(dataset_id)
         if record is None:
             raise KeyError(dataset_id)
+        return record
+
+    def preview_dataset(self, dataset_id: str, limit: int = 20) -> list[dict[str, object]]:
+        record = self.get_dataset(dataset_id)
 
         query = f"SELECT * FROM {record.view_name} LIMIT ?"
         rows = self.conn.execute(query, [limit]).fetchdf()
+        return rows.to_dict(orient="records")
+
+    def run_sql(self, dataset_id: str, query: str) -> list[dict[str, object]]:
+        record = self.get_dataset(dataset_id)
+        normalized_query = query.strip().rstrip(";")
+        if not normalized_query.lower().startswith("select"):
+            raise ValueError("Only read-only SELECT queries are allowed.")
+
+        rewritten_query = normalized_query.replace("{dataset}", record.view_name)
+        rows = self.conn.execute(rewritten_query).fetchdf()
         return rows.to_dict(orient="records")
 
 

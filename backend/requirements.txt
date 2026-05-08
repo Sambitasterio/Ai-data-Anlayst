@@ -6,3 +6,6 @@ duckdb
 pandas
 python-multipart
 openpyxl
+langchain
+langchain-openai
+langchain-classic

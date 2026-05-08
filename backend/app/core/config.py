@@ -1,4 +1,5 @@
 from functools import lru_cache
+import os
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -15,6 +16,7 @@ class Settings(BaseModel):
     environment: str = "development"
     cors_origins: list[str] = ["*"]
     uploads_dir: Path = BASE_DIR / "backend" / "uploads"
+    openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
 
 
 @lru_cache
