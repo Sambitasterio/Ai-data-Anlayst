@@ -1,0 +1,9 @@
+order_id,customer,region,category,quantity,unit_price,order_date
+1001,Alice,North,Electronics,2,499.99,2026-01-05
+1002,Bob,West,Furniture,1,899.50,2026-01-06
+1003,Charlie,South,Office Supplies,10,12.75,2026-01-07
+1004,Diana,East,Electronics,1,1299.00,2026-01-08
+1005,Evan,North,Clothing,4,39.99,2026-01-09
+1006,Farah,West,Office Supplies,6,8.50,2026-01-10
+1007,Gary,South,Furniture,2,450.00,2026-01-11
+1008,Hana,East,Clothing,3,59.99,2026-01-12
