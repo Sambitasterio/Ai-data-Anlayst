@@ -189,7 +189,7 @@ ai-data-analyst/
 | 4 | Streaming `/chat` endpoint (SSE) | ✅ | — | `start phase 4` |
 | 5 | Frontend scaffold (Next.js + Tailwind + shadcn) | ✅ | — | `start phase 5` |
 | 6 | Chat UI with Vercel AI SDK streaming | ✅ | — | `start phase 6` |
-| 7 | File upload UI (dropzone + preview) | ⬜ | — | `start phase 7` |
+| 7 | File upload UI (dropzone + preview) | ✅ | — | `start phase 7` |
 | 8 | Add `run_python` + `make_chart` tools | ⬜ | — | `start phase 8` |
 | 9 | LangGraph multi-node flow (Plan → Execute → Reflect) | ⬜ | — | `start phase 9` |
 | 10 | Plotly chart rendering on frontend | ⬜ | — | `start phase 10` |
@@ -263,10 +263,10 @@ ai-data-analyst/
 
 ### Phase 7 — File upload UI
 
-- [ ] `react-dropzone` integration
-- [ ] `components/upload/dropzone.tsx` with drag-and-drop animation
-- [ ] Show file preview (first 20 rows in a TanStack Table)
-- [ ] Dataset switcher in chat header
+- [x] `react-dropzone` integration
+- [x] `components/upload/dropzone.tsx` with drag-and-drop animation
+- [x] Show file preview (first 20 rows in a TanStack Table)
+- [x] Dataset switcher in chat header
 
 ### Phase 8 — More tools
 

@@ -5,14 +5,18 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import ReactMarkdown from "react-markdown";
 
+import { DatasetDropzone } from "@/components/upload/dropzone";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { getDatasetPreview, listDatasets, type DatasetInfo } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 export function ChatWindow() {
   const [datasetId, setDatasetId] = useState("");
-  const [datasetIdInput, setDatasetIdInput] = useState("");
+  const [datasets, setDatasets] = useState<DatasetInfo[]>([]);
+  const [datasetMeta, setDatasetMeta] = useState<DatasetInfo | null>(null);
+  const [datasetSummary, setDatasetSummary] = useState<string>("");
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   const {
@@ -57,25 +61,75 @@ export function ChatWindow() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  useEffect(() => {
+    const loadDatasets = async () => {
+      try {
+        const items = await listDatasets();
+        setDatasets(items);
+        if (!datasetId && items.length > 0) {
+          setDatasetId(items[0].id);
+          setDatasetMeta(items[0]);
+        }
+      } catch {
+        setDatasets([]);
+      }
+    };
+
+    void loadDatasets();
+  }, []);
+
+  const handleDatasetChange = async (newDatasetId: string) => {
+    setDatasetId(newDatasetId);
+    const selected = datasets.find((item) => item.id === newDatasetId) ?? null;
+    setDatasetMeta(selected);
+
+    if (!newDatasetId) {
+      setDatasetSummary("");
+      return;
+    }
+
+    try {
+      const preview = await getDatasetPreview(newDatasetId);
+      setDatasetSummary(`${preview.rows.length} preview rows loaded`);
+    } catch {
+      setDatasetSummary("");
+    }
+  };
+
   return (
     <div className="mx-auto flex h-[80vh] w-full max-w-4xl flex-col gap-4">
-      <div className="flex items-center gap-2">
-        <Input
-          value={datasetIdInput}
-          onChange={(e) => setDatasetIdInput(e.target.value)}
-          placeholder="Paste dataset_id from /upload response"
+      <div className="space-y-3 rounded-lg border p-3">
+        <DatasetDropzone
+          onUploaded={(dataset, preview) => {
+            setDatasets((prev) => [dataset, ...prev.filter((d) => d.id !== dataset.id)]);
+            setDatasetId(dataset.id);
+            setDatasetMeta(dataset);
+            setDatasetSummary(`${preview.rows.length} preview rows loaded`);
+          }}
         />
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => setDatasetId(datasetIdInput.trim())}
-        >
-          Set Dataset
-        </Button>
+
+        <div className="flex items-center gap-2">
+          <select
+            className="h-9 flex-1 rounded-md border bg-background px-3 text-sm"
+            value={datasetId}
+            onChange={(e) => void handleDatasetChange(e.target.value)}
+          >
+            <option value="">Select dataset</option>
+            {datasets.map((dataset) => (
+              <option key={dataset.id} value={dataset.id}>
+                {dataset.file_name} ({dataset.id.slice(0, 8)}...)
+              </option>
+            ))}
+          </select>
+          <Button type="button" variant="outline" onClick={() => setInput("How many rows are in this dataset?")}>
+            Sample Q
+          </Button>
+        </div>
       </div>
 
       <div className="text-sm text-muted-foreground">
-        Active dataset: {datasetId || "not set"}
+        Active dataset: {datasetMeta?.file_name || "not set"}
+        {datasetSummary ? ` · ${datasetSummary}` : ""}
       </div>
 
       <ScrollArea className="flex-1 rounded-lg border p-4">
