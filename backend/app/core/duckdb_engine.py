@@ -92,3 +92,9 @@ def get_duckdb_engine(uploads_dir: Path) -> DuckDBEngine:
     if duckdb_engine is None:
         duckdb_engine = DuckDBEngine(uploads_dir=uploads_dir)
     return duckdb_engine
+
+
+def reset_duckdb_engine_singleton() -> None:
+    """Clears process-wide DuckDB engine (pytest / tooling)."""
+    global duckdb_engine
+    duckdb_engine = None

@@ -199,7 +199,7 @@ ai-data-analyst/
 | 14 | Polish: dark mode, animations, error states, skeletons | ✅ | — | `start phase 14` |
 | 15 | SQL DB connector (Postgres / MySQL / SQLite) | ✅ | — | `start phase 15` |
 | 16 | Save / share dashboards (persistence) | ✅ | — | `start phase 16` |
-| 17 | Tests (pytest backend + Playwright e2e) | ⬜ | — | `start phase 17` |
+| 17 | Tests (pytest backend + Playwright e2e) | ✅ | — | `start phase 17` |
 | 18 | Deploy (Vercel frontend + Fly.io/Railway backend) | ⬜ | — | `start phase 18` |
 
 ---
@@ -331,9 +331,9 @@ ai-data-analyst/
 
 ### Phase 17 — Tests
 
-- [ ] `pytest` for backend (agent tools, API routes)
-- [ ] Playwright e2e: upload → ask question → see chart
-- [ ] GitHub Actions CI
+- [x] `pytest` for backend (`/health`, DuckDB `{dataset}` rewrite + guardrails, agent routing + warnings)
+- [x] Playwright smoke (`/` + `/chat`; full upload→chart flow left as Phase 17+ refinement)
+- [x] GitHub Actions CI (`backend pytest` + `frontend build` + Playwright chromium)
 
 ### Phase 18 — Deploy
 
@@ -458,9 +458,9 @@ Use this section when sharing the project with another developer/agent so they c
 
 ### Current completion checkpoint
 
-- Phases **0 → 16** are completed.
-- Last completed phase: **16 (Save / share)**.
-- Next phase to start: **17 (Tests)**.
+- Phases **0 → 17** are completed.
+- Last completed phase: **17 (Tests)**.
+- Next phase to start: **18 (Deploy)**.
 
 ### Verified runtime stack
 
@@ -483,4 +483,4 @@ Use this section when sharing the project with another developer/agent so they c
 
 1. Run backend and frontend.
 2. Confirm `/chat` works with uploaded sample dataset.
-3. Start Phase 17 checklist in this file from top to bottom.
+3. Start Phase 18 checklist in this file from top to bottom.

@@ -6,7 +6,7 @@ Talk to your data with a full-stack app:
 - execute SQL/Python tool paths
 - stream responses in chat UI
 
-This README reflects the current build status through **Phase 16**.
+This README reflects the current build status through **Phase 17**.
 
 ## Current Status
 
@@ -28,6 +28,7 @@ Completed phases:
 - Phase 14: polish pass (skeletons, toasts, empty states, transitions, mobile UI, command palette)
 - Phase 15: SQL DB connector (Postgres/MySQL/SQLite) with encrypted credentials + schema-aware prompts
 - Phase 16: accounts + JWT API, NextAuth (credentials + optional GitHub), dashboard share links (view/edit)
+- Phase 17: pytest (agent + DuckDB + API health) + Playwright smoke + GitHub Actions CI
 
 ## Project Structure
 
@@ -80,6 +81,35 @@ npm run dev
 
 Frontend URL: `http://localhost:3000`
 Chat page: `http://localhost:3000/chat`
+
+### Tests (Phase 17)
+
+**Backend (pytest):** run from the **`backend/`** folder (or use the paths below from the repo root).
+
+```bash
+cd backend
+pip install -r requirements.txt -r requirements-dev.txt
+pytest tests -q --tb=short
+```
+
+From repo root (parent of `backend/` and `frontend/`):
+
+```bash
+pip install -r backend/requirements.txt -r backend/requirements-dev.txt
+cd backend && pytest tests -q --tb=short
+```
+
+**Frontend (Playwright):** requires a production build and auth env vars (same as `.env.local`), then:
+
+```bash
+cd frontend
+npm install
+npm run build
+npx playwright install chromium   # first time only
+PLAYWRIGHT_WEBSERVER_COMMAND="npm run start -- -p 3000" npm run test:e2e
+```
+
+On GitHub Actions, `frontend` job runs `npm run build`, installs Chromium, and executes `npm run test:e2e` with the web server started by Playwright.
 
 ## Environment Variables
 
