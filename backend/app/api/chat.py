@@ -1,10 +1,13 @@
 import json
 from collections.abc import Iterator
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
+from sqlalchemy.orm import Session
 
 from app.agent.graph import ask_dataset
+from app.core.database import get_db_session
+from app.models import Conversation, ConversationMessage
 from app.schemas import ChatRequest
 
 
@@ -15,18 +18,70 @@ def _sse_event(event: str, payload: dict[str, object]) -> str:
     return f"event: {event}\ndata: {json.dumps(payload)}\n\n"
 
 
-def _chat_stream(question: str, dataset_id: str) -> Iterator[str]:
+def _build_contextual_question(
+    previous_messages: list[ConversationMessage],
+    latest_user_message: str,
+) -> str:
+    if not previous_messages:
+        return latest_user_message
+
+    window = previous_messages[-8:]
+    history_lines = [f"{message.role.title()}: {message.content}" for message in window]
+    history = "\n".join(history_lines)
+    return (
+        "Use the conversation history for context, but only answer the final user question.\n\n"
+        f"Conversation history:\n{history}\n\n"
+        f"Final user question: {latest_user_message}"
+    )
+
+
+def _chat_stream(
+    question: str,
+    dataset_id: str,
+    conversation: Conversation,
+    db: Session,
+) -> Iterator[str]:
     try:
-        result = ask_dataset(question=question, dataset_id=dataset_id)
+        history_messages = (
+            db.query(ConversationMessage)
+            .filter(ConversationMessage.conversation_id == conversation.id)
+            .order_by(ConversationMessage.created_at.asc())
+            .all()
+        )
+        contextual_question = _build_contextual_question(history_messages, question)
+
+        user_message = ConversationMessage(
+            conversation_id=conversation.id,
+            role="user",
+            content=question,
+        )
+        db.add(user_message)
+        db.commit()
+
+        result = ask_dataset(question=contextual_question, dataset_id=dataset_id)
         transitions = result.get("transitions", [])
         for node in transitions:
             yield _sse_event("thought", {"message": f"{node} node"})
+
+        assistant_answer = result["answer"]
+        assistant_message = ConversationMessage(
+            conversation_id=conversation.id,
+            role="assistant",
+            content=assistant_answer,
+        )
+        db.add(assistant_message)
+        conversation.dataset_id = dataset_id
+        db.commit()
+        db.refresh(conversation)
+
         yield _sse_event(
             "final",
             {
-                "answer": result["answer"],
+                "answer": assistant_answer,
                 "sql": result["sql"],
                 "python": result.get("python", ""),
+                "conversation_id": conversation.id,
+                "conversation_title": conversation.title,
             },
         )
     except KeyError:
@@ -38,18 +93,26 @@ def _chat_stream(question: str, dataset_id: str) -> Iterator[str]:
                 ),
                 "sql": "",
                 "python": "",
+                "conversation_id": conversation.id,
+                "conversation_title": conversation.title,
             },
         )
     except Exception as exc:
         yield _sse_event(
             "final",
-            {"answer": f"Chat processing failed: {exc}", "sql": "", "python": ""},
+            {
+                "answer": f"Chat processing failed: {exc}",
+                "sql": "",
+                "python": "",
+                "conversation_id": conversation.id,
+                "conversation_title": conversation.title,
+            },
         )
     yield _sse_event("done", {"ok": True})
 
 
 @router.post("/chat")
-def chat(request: ChatRequest) -> StreamingResponse:
+def chat(request: ChatRequest, db: Session = Depends(get_db_session)) -> StreamingResponse:
     if not request.messages:
         raise HTTPException(status_code=400, detail="messages cannot be empty")
 
@@ -61,5 +124,25 @@ def chat(request: ChatRequest) -> StreamingResponse:
     if not latest_user_message:
         raise HTTPException(status_code=400, detail="latest user message cannot be empty")
 
-    stream = _chat_stream(question=latest_user_message, dataset_id=request.dataset_id)
+    conversation: Conversation | None = None
+    if request.conversation_id:
+        conversation = (
+            db.query(Conversation).filter(Conversation.id == request.conversation_id).first()
+        )
+        if conversation is None:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+
+    if conversation is None:
+        generated_title = latest_user_message[:60].strip() or "New chat"
+        conversation = Conversation(title=generated_title, dataset_id=request.dataset_id)
+        db.add(conversation)
+        db.commit()
+        db.refresh(conversation)
+
+    stream = _chat_stream(
+        question=latest_user_message,
+        dataset_id=request.dataset_id,
+        conversation=conversation,
+        db=db,
+    )
     return StreamingResponse(stream, media_type="text/event-stream")

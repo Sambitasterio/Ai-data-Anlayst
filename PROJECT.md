@@ -194,7 +194,7 @@ ai-data-analyst/
 | 9 | LangGraph multi-node flow (Plan → Execute → Reflect) | ✅ | — | `start phase 9` |
 | 10 | Plotly chart rendering on frontend | ✅ | — | `start phase 10` |
 | 11 | Code preview panel (Shiki SQL/Python highlighting) | ✅ | — | `start phase 11` |
-| 12 | Conversation memory + history sidebar | ⬜ | — | `start phase 12` |
+| 12 | Conversation memory + history sidebar | ✅ | — | `start phase 12` |
 | 13 | Dashboard layout (drag-resize chart cards) | ⬜ | — | `start phase 13` |
 | 14 | Polish: dark mode, animations, error states, skeletons | ⬜ | — | `start phase 14` |
 | 15 | SQL DB connector (Postgres / MySQL / SQLite) | ⬜ | — | `start phase 15` |
@@ -296,10 +296,10 @@ ai-data-analyst/
 
 ### Phase 12 — Memory & history
 
-- [ ] Backend: store conversations (SQLite via SQLAlchemy)
-- [ ] `GET /conversations` + `GET /conversations/{id}`
-- [ ] Frontend: sidebar with past conversations
-- [ ] New chat / delete chat / rename chat
+- [x] Backend: store conversations (SQLite via SQLAlchemy)
+- [x] `GET /conversations` + `GET /conversations/{id}`
+- [x] Frontend: sidebar with past conversations
+- [x] New chat / delete chat / rename chat
 
 ### Phase 13 — Dashboard layout
 
@@ -437,3 +437,38 @@ A multi-tool LangChain agent that takes a prompt like *"5 days in Tokyo, $2000 b
 ## License
 
 MIT (planned)
+
+---
+
+## Agent Handoff Notes (for new chats)
+
+Use this section when sharing the project with another developer/agent so they can continue without re-discovery.
+
+### Current completion checkpoint
+
+- Phases **0 → 12** are completed.
+- Last completed phase: **12 (Memory & history)**.
+- Next phase to start: **13 (Dashboard layout)**.
+
+### Verified runtime stack
+
+- Backend: FastAPI + DuckDB + LangGraph flow (`Plan -> Execute -> Reflect -> Respond`)
+- Frontend: Next.js App Router + Vercel AI SDK chat + Plotly chart rendering + Shiki code preview
+
+### Important behavior notes
+
+- Dataset IDs are currently stored in-memory via backend process state.
+- If backend restarts, datasets must be uploaded again (new dataset IDs).
+- Frontend expects backend on `http://127.0.0.1:8000` unless overridden by env.
+
+### Documentation convention
+
+- On every completed phase:
+  - Update the phase status/checklist in this file.
+  - Update `README.md` to reflect latest completed phase and capabilities.
+
+### How to continue immediately
+
+1. Run backend and frontend.
+2. Confirm `/chat` works with uploaded sample dataset.
+3. Start Phase 12 checklist in this file from top to bottom.

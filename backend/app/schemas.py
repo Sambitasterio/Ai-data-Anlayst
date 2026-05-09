@@ -37,3 +37,32 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     dataset_id: str
     messages: list[ChatMessage]
+    conversation_id: str | None = None
+
+
+class ConversationCreateRequest(BaseModel):
+    title: str | None = None
+    dataset_id: str | None = None
+
+
+class ConversationUpdateRequest(BaseModel):
+    title: str
+
+
+class ConversationMessageResponse(BaseModel):
+    id: str
+    role: str
+    content: str
+    created_at: str
+
+
+class ConversationSummaryResponse(BaseModel):
+    id: str
+    title: str
+    dataset_id: str | None
+    created_at: str
+    updated_at: str
+
+
+class ConversationDetailResponse(ConversationSummaryResponse):
+    messages: list[ConversationMessageResponse]

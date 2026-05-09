@@ -22,7 +22,12 @@ def _append_transition(state: AgentState, node_name: str) -> list[str]:
 
 
 def _plan_node(state: AgentState) -> AgentState:
-    text = state["question"].lower()
+    question_text = state["question"]
+    marker = "Final user question:"
+    if marker in question_text:
+        # When conversation context is prepended, route based on the latest turn only.
+        question_text = question_text.split(marker, maxsplit=1)[1].strip()
+    text = question_text.lower()
     if "run_python" in text or "python" in text:
         plan = "python_total_quantity"
     elif "chart" in text or "plotly" in text or "make_chart" in text:
@@ -62,34 +67,91 @@ def _execute_node(state: AgentState) -> AgentState:
             }
 
         if state["plan"] == "chart_by_category":
-            rows = run_sql(
-                query=(
-                    "SELECT category, SUM(quantity) AS total_quantity "
-                    "FROM {dataset} GROUP BY category ORDER BY total_quantity DESC"
-                ),
-                dataset_id=state["dataset_id"],
-            )
             import ast
 
+            question_text = state["question"].lower()
+            chart_type = "bar"
+            x_key = "category"
+            y_key = "total_quantity"
+            y_title = "Quantity"
+            title = "Quantity by Category"
+
+            if "revenue" in question_text and "region" in question_text:
+                sql_query = (
+                    "SELECT region, SUM(quantity * unit_price) AS total_revenue "
+                    "FROM {dataset} GROUP BY region ORDER BY total_revenue DESC"
+                )
+                x_key = "region"
+                y_key = "total_revenue"
+                y_title = "Revenue"
+                title = "Revenue by Region"
+            elif "customer" in question_text and ("top" in question_text or "spend" in question_text):
+                sql_query = (
+                    "SELECT customer, SUM(quantity * unit_price) AS total_spend "
+                    "FROM {dataset} GROUP BY customer ORDER BY total_spend DESC LIMIT 5"
+                )
+                x_key = "customer"
+                y_key = "total_spend"
+                y_title = "Total Spend"
+                title = "Top 5 Customers by Total Spend"
+            elif "daily" in question_text or "order_date" in question_text or "date" in question_text:
+                sql_query = (
+                    "SELECT order_date, SUM(quantity * unit_price) AS total_revenue "
+                    "FROM {dataset} GROUP BY order_date ORDER BY order_date"
+                )
+                chart_type = "scatter"
+                x_key = "order_date"
+                y_key = "total_revenue"
+                y_title = "Revenue"
+                title = "Daily Total Revenue"
+            elif "top 5" in question_text and "category" in question_text:
+                sql_query = (
+                    "SELECT category, SUM(quantity) AS total_quantity "
+                    "FROM {dataset} GROUP BY category ORDER BY total_quantity DESC LIMIT 5"
+                )
+                x_key = "category"
+                y_key = "total_quantity"
+                y_title = "Quantity"
+                title = "Top 5 Categories by Quantity"
+            else:
+                sql_query = (
+                    "SELECT category, SUM(quantity) AS total_quantity "
+                    "FROM {dataset} GROUP BY category ORDER BY total_quantity DESC"
+                )
+
+            rows = run_sql(
+                query=sql_query,
+                dataset_id=state["dataset_id"],
+            )
             parsed_rows = ast.literal_eval(rows)
             chart_spec = {
                 "data": [
                     {
-                        "type": "bar",
-                        "x": [row.get("category") for row in parsed_rows],
-                        "y": [row.get("total_quantity") for row in parsed_rows],
+                        "type": chart_type,
+                        "mode": "lines+markers" if chart_type == "scatter" else None,
+                        "x": [row.get(x_key) for row in parsed_rows],
+                        "y": [row.get(y_key) for row in parsed_rows],
                     }
                 ],
-                "layout": {"title": "Quantity by Category"},
+                "layout": {
+                    "title": title,
+                    "xaxis": {"title": x_key.replace("_", " ").title()},
+                    "yaxis": {"title": y_title},
+                },
             }
+            if chart_type == "bar":
+                # Helps with long category/customer labels.
+                chart_spec["layout"]["xaxis"]["tickangle"] = -20
+
+            # Remove `mode` for bar charts to keep Plotly payload clean.
+            if chart_type != "scatter":
+                chart_spec["data"][0].pop("mode", None)
+
             answer = make_chart(str(chart_spec))
             return {
                 **state,
                 "answer": answer,
-                "sql": (
-                    "SELECT category, SUM(quantity) AS total_quantity FROM {dataset} "
-                    "GROUP BY category ORDER BY total_quantity DESC"
-                ),
+                "sql": sql_query,
                 "error": "",
                 "python": "",
                 "transitions": _append_transition(state, "execute"),

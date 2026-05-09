@@ -6,6 +6,7 @@ const BACKEND_URL = process.env.BACKEND_URL ?? "http://127.0.0.1:8000";
 type BackendChatPayload = {
   datasetId?: string;
   dataset_id?: string;
+  conversation_id?: string;
   message?: { role: string; parts?: Array<{ type: string; text?: string }> };
   messages?: Array<{
     role: string;
@@ -54,6 +55,7 @@ export async function POST(req: Request): Promise<Response> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       dataset_id: datasetId,
+      conversation_id: body.conversation_id,
       messages: normalizedMessages,
     }),
   });

@@ -6,7 +6,7 @@ Talk to your data with a full-stack app:
 - execute SQL/Python tool paths
 - stream responses in chat UI
 
-This README reflects the current build status through **Phase 11**.
+This README reflects the current build status through **Phase 12**.
 
 ## Current Status
 
@@ -23,6 +23,7 @@ Completed phases:
 - Phase 9: LangGraph flow (`Plan -> Execute -> Reflect -> Respond`) + retry path
 - Phase 10: Plotly chart rendering inline in chat
 - Phase 11: Shiki-powered code preview panel (SQL/Python tabs + copy)
+- Phase 12: conversation memory + history sidebar (new/rename/delete + reload)
 
 ## Project Structure
 
@@ -30,10 +31,11 @@ Completed phases:
 ai-data-analyst/
 ├── backend/
 │   ├── app/
-│   │   ├── api/        # upload/chat routes
+│   │   ├── api/        # upload/chat/conversation routes
 │   │   ├── agent/      # graph, prompts, tools
-│   │   ├── core/       # config, duckdb engine
-│   │   └── schemas.py
+│   │   ├── core/       # config, duckdb engine, sqlite database
+│   │   ├── models.py   # SQLAlchemy conversation models
+│   │   └── schemas.py  # API request/response schemas
 │   └── requirements.txt
 ├── frontend/
 │   ├── app/            # Next.js app router pages + api proxy
@@ -97,6 +99,8 @@ Notes:
 - Dataset listing: `GET /datasets`
 - Dataset preview: `GET /datasets/{id}/preview`
 - SSE chat: `POST /chat`
+- Conversation history list/detail: `GET /conversations`, `GET /conversations/{id}`
+- Conversation actions: `POST /conversations`, `PATCH /conversations/{id}`, `DELETE /conversations/{id}`
 - Agent graph transitions streamed as thought events
 
 ### Agent Tools
@@ -110,6 +114,7 @@ Notes:
 - Chat interface with streaming messages
 - Upload dropzone UI
 - Dataset switcher in chat header
+- Conversation history sidebar
 - Preview table for uploaded data
 - Stop and regenerate controls
 - Inline Plotly chart rendering for assistant chart specs
@@ -148,9 +153,9 @@ curl --no-buffer -N \
 ## Known Limitations
 
 - Dataset registry is in-memory; after backend restart, re-upload files.
-- Frontend currently displays chart specs as text; chart rendering phase is upcoming.
+- Conversation history is persisted in SQLite, but linked dataset IDs may become stale after backend restart.
 - Additional sandbox hardening for Python execution is still planned.
 
 ## Next Planned Phase
 
-Phase 12: conversation memory + history sidebar.
+Phase 13: dashboard layout and chart pinning.

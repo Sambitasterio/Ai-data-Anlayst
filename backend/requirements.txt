@@ -9,3 +9,4 @@ openpyxl
 langchain
 langchain-openai
 langchain-classic
+sqlalchemy
