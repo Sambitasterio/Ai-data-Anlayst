@@ -5,11 +5,13 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import ReactMarkdown from "react-markdown";
 
+import { ChartCard } from "@/components/dashboard/chart-card";
 import { DatasetDropzone } from "@/components/upload/dropzone";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getDatasetPreview, listDatasets, type DatasetInfo } from "@/lib/api";
+import { extractChartSpecFromText } from "@/lib/plotly-loader";
 import { cn } from "@/lib/utils";
 
 export function ChatWindow() {
@@ -135,24 +137,43 @@ export function ChatWindow() {
       <ScrollArea className="flex-1 rounded-lg border p-4">
         <div className="space-y-4">
           {messages.map((message) => (
-            <div
-              key={message.id}
-              className={cn(
-                "max-w-[85%] rounded-lg px-3 py-2 text-sm",
-                message.role === "user"
-                  ? "ml-auto bg-primary text-primary-foreground"
-                  : "bg-muted text-foreground"
-              )}
-            >
-              <ReactMarkdown>
-                {message.parts.reduce((acc, part) => {
-                  if (part.type === "text") {
-                    return acc + part.text;
-                  }
-                  return acc;
-                }, "")}
-              </ReactMarkdown>
-            </div>
+            (() => {
+              const textContent = message.parts.reduce((acc, part) => {
+                if (part.type === "text") {
+                  return acc + part.text;
+                }
+                return acc;
+              }, "");
+              const chartSpec =
+                message.role === "assistant"
+                  ? extractChartSpecFromText(textContent)
+                  : null;
+
+              if (chartSpec) {
+                return (
+                  <div key={message.id} className="space-y-2">
+                    <div className="max-w-[85%] rounded-lg bg-muted px-3 py-2 text-sm text-foreground">
+                      Rendered chart from assistant response.
+                    </div>
+                    <ChartCard spec={chartSpec} title="Assistant Chart" />
+                  </div>
+                );
+              }
+
+              return (
+                <div
+                  key={message.id}
+                  className={cn(
+                    "max-w-[85%] rounded-lg px-3 py-2 text-sm",
+                    message.role === "user"
+                      ? "ml-auto bg-primary text-primary-foreground"
+                      : "bg-muted text-foreground"
+                  )}
+                >
+                  <ReactMarkdown>{textContent}</ReactMarkdown>
+                </div>
+              );
+            })()
           ))}
           <div ref={bottomRef} />
         </div>

@@ -192,7 +192,7 @@ ai-data-analyst/
 | 7 | File upload UI (dropzone + preview) | ✅ | — | `start phase 7` |
 | 8 | Add `run_python` + `make_chart` tools | ✅ | — | `start phase 8` |
 | 9 | LangGraph multi-node flow (Plan → Execute → Reflect) | ✅ | — | `start phase 9` |
-| 10 | Plotly chart rendering on frontend | ⬜ | — | `start phase 10` |
+| 10 | Plotly chart rendering on frontend | ✅ | — | `start phase 10` |
 | 11 | Code preview panel (Shiki SQL/Python highlighting) | ⬜ | — | `start phase 11` |
 | 12 | Conversation memory + history sidebar | ⬜ | — | `start phase 12` |
 | 13 | Dashboard layout (drag-resize chart cards) | ⬜ | — | `start phase 13` |
@@ -282,10 +282,10 @@ ai-data-analyst/
 
 ### Phase 10 — Plotly on frontend
 
-- [ ] Dynamic-import `react-plotly.js` (avoid SSR issues)
-- [ ] `components/dashboard/chart-card.tsx`
-- [ ] Render charts inline in chat messages
-- [ ] Resize / fullscreen / export-as-PNG buttons
+- [x] Dynamic-import `react-plotly.js` (avoid SSR issues)
+- [x] `components/dashboard/chart-card.tsx`
+- [x] Render charts inline in chat messages
+- [x] Resize / fullscreen / export-as-PNG buttons
 
 ### Phase 11 — Code preview panel
 
