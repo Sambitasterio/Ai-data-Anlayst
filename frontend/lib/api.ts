@@ -25,6 +25,8 @@ export type ConversationSummary = {
   dataset_id: string | null;
   created_at: string;
   updated_at: string;
+  dashboard_layout: Array<Record<string, unknown>>;
+  dashboard_items: Array<Record<string, unknown>>;
 };
 
 export type ConversationMessage = {
@@ -128,4 +130,22 @@ export async function deleteConversation(conversationId: string): Promise<void> 
   if (!response.ok) {
     throw new Error("Failed to delete conversation.");
   }
+}
+
+export async function updateConversationDashboard(
+  conversationId: string,
+  input: {
+    dashboard_layout: Array<Record<string, unknown>>;
+    dashboard_items: Array<Record<string, unknown>>;
+  }
+): Promise<ConversationSummary> {
+  const response = await fetch(`${BACKEND_URL}/conversations/${conversationId}/dashboard`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    throw new Error("Failed to save dashboard.");
+  }
+  return (await response.json()) as ConversationSummary;
 }

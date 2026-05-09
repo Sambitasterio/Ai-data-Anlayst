@@ -17,6 +17,8 @@ class Conversation(Base):
     )
     title: Mapped[str] = mapped_column(String(255), default="New chat")
     dataset_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    dashboard_layout: Mapped[str] = mapped_column(Text(), default="[]")
+    dashboard_items: Mapped[str] = mapped_column(Text(), default="[]")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

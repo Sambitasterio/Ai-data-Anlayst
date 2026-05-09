@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class DatasetColumn(BaseModel):
@@ -49,6 +49,11 @@ class ConversationUpdateRequest(BaseModel):
     title: str
 
 
+class ConversationDashboardUpdateRequest(BaseModel):
+    dashboard_layout: list[dict[str, object]]
+    dashboard_items: list[dict[str, object]]
+
+
 class ConversationMessageResponse(BaseModel):
     id: str
     role: str
@@ -62,6 +67,8 @@ class ConversationSummaryResponse(BaseModel):
     dataset_id: str | None
     created_at: str
     updated_at: str
+    dashboard_layout: list[dict[str, object]] = Field(default_factory=list)
+    dashboard_items: list[dict[str, object]] = Field(default_factory=list)
 
 
 class ConversationDetailResponse(ConversationSummaryResponse):

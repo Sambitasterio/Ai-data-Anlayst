@@ -6,19 +6,24 @@ import { DefaultChatTransport } from "ai";
 import ReactMarkdown from "react-markdown";
 
 import { CodePreview } from "@/components/chat/code-preview";
+import {
+  DashboardGrid,
+  type DashboardLayoutItem,
+  type DashboardItem,
+} from "@/components/dashboard/dashboard-grid";
 import { ChartCard } from "@/components/dashboard/chart-card";
 import { DatasetDropzone } from "@/components/upload/dropzone";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  createConversation,
   deleteConversation,
   getConversation,
   getDatasetPreview,
   listConversations,
   listDatasets,
   renameConversation,
+  updateConversationDashboard,
   type ConversationMessage,
   type ConversationSummary,
   type DatasetInfo,
@@ -34,6 +39,13 @@ export function ChatWindow() {
   const [datasetSummary, setDatasetSummary] = useState<string>("");
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [conversationId, setConversationId] = useState<string>("");
+  const [dashboardItems, setDashboardItems] = useState<DashboardItem[]>([]);
+  const [dashboardLayout, setDashboardLayout] = useState<DashboardLayoutItem[]>([]);
+  const conversationIdRef = useRef<string>("");
+  const datasetIdRef = useRef<string>("");
+  const dashboardItemsRef = useRef<DashboardItem[]>([]);
+  const dashboardLayoutRef = useRef<DashboardLayoutItem[]>([]);
+  const removedDashboardItemIdsRef = useRef<Set<string>>(new Set());
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   const {
@@ -59,8 +71,8 @@ export function ChatWindow() {
             id,
             trigger,
             messageId,
-            dataset_id: datasetId,
-            conversation_id: conversationId || undefined,
+            dataset_id: datasetIdRef.current,
+            conversation_id: conversationIdRef.current || undefined,
             messages: outgoingMessages,
           },
         };
@@ -79,6 +91,22 @@ export function ChatWindow() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    conversationIdRef.current = conversationId;
+  }, [conversationId]);
+
+  useEffect(() => {
+    datasetIdRef.current = datasetId;
+  }, [datasetId]);
+
+  useEffect(() => {
+    dashboardItemsRef.current = dashboardItems;
+  }, [dashboardItems]);
+
+  useEffect(() => {
+    dashboardLayoutRef.current = dashboardLayout;
+  }, [dashboardLayout]);
 
   useEffect(() => {
     const loadDatasets = async () => {
@@ -135,16 +163,53 @@ export function ChatWindow() {
       parts: [{ type: "text" as const, text: message.content }],
     }));
 
+  const parseDashboardState = (conversation: ConversationSummary) => {
+    const nextItems = (conversation.dashboard_items ?? [])
+      .map((item) => {
+        const id = typeof item.id === "string" ? item.id : "";
+        const title = typeof item.title === "string" ? item.title : "Pinned chart";
+        const spec = item.spec;
+        if (!id || !spec || typeof spec !== "object") {
+          return null;
+        }
+        return { id, title, spec } as DashboardItem;
+      })
+      .filter((item): item is DashboardItem => item !== null);
+
+    const nextLayout = (conversation.dashboard_layout ?? [])
+      .map((layout) => {
+        const i = typeof layout.i === "string" ? layout.i : "";
+        const x = Number(layout.x);
+        const y = Number(layout.y);
+        const w = Number(layout.w);
+        const h = Number(layout.h);
+        if (!i || !Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(w) || !Number.isFinite(h)) {
+          return null;
+        }
+        return { i, x, y, w, h };
+      })
+      .filter((item): item is DashboardLayoutItem => item !== null);
+
+    dashboardItemsRef.current = nextItems;
+    dashboardLayoutRef.current = nextLayout;
+    setDashboardItems(nextItems);
+    setDashboardLayout(nextLayout);
+    removedDashboardItemIdsRef.current.clear();
+  };
+
   const handleSelectConversation = async (selectedConversationId: string) => {
     setConversationId(selectedConversationId);
     try {
       const detail = await getConversation(selectedConversationId);
       setMessages(mapConversationToMessages(detail.messages));
+      parseDashboardState(detail);
       if (detail.dataset_id) {
         await handleDatasetChange(detail.dataset_id);
       }
     } catch {
       setMessages([]);
+      setDashboardItems([]);
+      setDashboardLayout([]);
     }
   };
 
@@ -152,6 +217,11 @@ export function ChatWindow() {
     setConversationId("");
     setMessages([]);
     setInput("");
+    dashboardItemsRef.current = [];
+    dashboardLayoutRef.current = [];
+    setDashboardItems([]);
+    setDashboardLayout([]);
+    removedDashboardItemIdsRef.current.clear();
   };
 
   const handleRenameConversation = async (id: string) => {
@@ -185,20 +255,7 @@ export function ChatWindow() {
       return;
     }
 
-    let currentConversationId = conversationId;
-    if (!currentConversationId) {
-      try {
-        const created = await createConversation({
-          title: input.trim().slice(0, 60) || "New chat",
-          dataset_id: datasetId || undefined,
-        });
-        currentConversationId = created.id;
-        setConversationId(created.id);
-        setConversations((prev) => [created, ...prev]);
-      } catch {
-        return;
-      }
-    }
+    const wasDraftConversation = !conversationId;
 
     await sendMessage({ text: input });
     setInput("");
@@ -206,9 +263,85 @@ export function ChatWindow() {
     try {
       const refreshed = await listConversations();
       setConversations(refreshed);
+      if (wasDraftConversation && refreshed.length > 0) {
+        const newestConversation = refreshed[0];
+        conversationIdRef.current = newestConversation.id;
+        await handleSelectConversation(newestConversation.id);
+      }
     } catch {
       // Keep existing list if refresh fails.
     }
+  };
+
+  const saveDashboard = async (
+    nextLayout: DashboardLayoutItem[],
+    nextItems: DashboardItem[]
+  ) => {
+    if (!conversationId) {
+      return;
+    }
+    try {
+      const updated = await updateConversationDashboard(conversationId, {
+        dashboard_layout: nextLayout as Array<Record<string, unknown>>,
+        dashboard_items: nextItems as Array<Record<string, unknown>>,
+      });
+      setConversations((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+    } catch {
+      // Keep local dashboard state; user can retry by moving/pinning again.
+    }
+  };
+
+  const handlePinChart = (spec: ReturnType<typeof extractChartSpecFromText>) => {
+    if (!spec) {
+      return;
+    }
+    if (!conversationId) {
+      window.alert("Start a conversation first, then pin the chart.");
+      return;
+    }
+    const itemId = crypto.randomUUID();
+    const nextItem: DashboardItem = {
+      id: itemId,
+      title: typeof spec.layout?.title === "string" ? spec.layout.title : "Pinned chart",
+      spec,
+    };
+    const nextItems = [...dashboardItems, nextItem];
+    const nextLayout = [
+      ...dashboardLayout,
+      { i: itemId, x: (dashboardItems.length * 4) % 12, y: Infinity, w: 6, h: 10 },
+    ];
+    removedDashboardItemIdsRef.current.delete(itemId);
+    dashboardItemsRef.current = nextItems;
+    dashboardLayoutRef.current = nextLayout;
+    setDashboardItems(nextItems);
+    setDashboardLayout(nextLayout);
+    void saveDashboard(nextLayout, nextItems);
+  };
+
+  const handleDashboardLayoutChange = (nextLayout: DashboardLayoutItem[]) => {
+    const blockedIds = removedDashboardItemIdsRef.current;
+    const existingItemIds = new Set(dashboardItemsRef.current.map((item) => item.id));
+    const filteredLayout = nextLayout.filter(
+      (item) => !blockedIds.has(item.i) && existingItemIds.has(item.i)
+    );
+    const nextIds = new Set(filteredLayout.map((item) => item.i));
+    const syncedItems = dashboardItemsRef.current.filter((item) => nextIds.has(item.id));
+    dashboardItemsRef.current = syncedItems;
+    dashboardLayoutRef.current = filteredLayout;
+    setDashboardLayout(filteredLayout);
+    setDashboardItems(syncedItems);
+    void saveDashboard(filteredLayout, syncedItems);
+  };
+
+  const handleRemovePinnedItem = (itemId: string) => {
+    removedDashboardItemIdsRef.current.add(itemId);
+    const nextItems = dashboardItemsRef.current.filter((item) => item.id !== itemId);
+    const nextLayout = dashboardLayoutRef.current.filter((item) => item.i !== itemId);
+    dashboardItemsRef.current = nextItems;
+    dashboardLayoutRef.current = nextLayout;
+    setDashboardItems(nextItems);
+    setDashboardLayout(nextLayout);
+    void saveDashboard(nextLayout, nextItems);
   };
 
   return (
@@ -289,6 +422,16 @@ export function ChatWindow() {
           {datasetSummary ? ` · ${datasetSummary}` : ""}
         </div>
 
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium">Dashboard</h3>
+          <DashboardGrid
+            items={dashboardItems}
+            layout={dashboardLayout}
+            onLayoutChange={handleDashboardLayoutChange}
+            onRemoveItem={handleRemovePinnedItem}
+          />
+        </div>
+
         <ScrollArea className="flex-1 rounded-lg border p-4">
           <div className="space-y-4">
             {messages.map((message) => (
@@ -311,7 +454,11 @@ export function ChatWindow() {
                       <div className="max-w-[85%] rounded-lg bg-muted px-3 py-2 text-sm text-foreground">
                         Rendered chart from assistant response.
                       </div>
-                      <ChartCard spec={chartSpec} title="Assistant Chart" />
+                      <ChartCard
+                        spec={chartSpec}
+                        title="Assistant Chart"
+                        onPin={() => handlePinChart(chartSpec)}
+                      />
                       <CodePreview sql={decoded.meta.sql} python={decoded.meta.python} />
                     </div>
                   );

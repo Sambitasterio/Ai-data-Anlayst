@@ -195,7 +195,7 @@ ai-data-analyst/
 | 10 | Plotly chart rendering on frontend | ✅ | — | `start phase 10` |
 | 11 | Code preview panel (Shiki SQL/Python highlighting) | ✅ | — | `start phase 11` |
 | 12 | Conversation memory + history sidebar | ✅ | — | `start phase 12` |
-| 13 | Dashboard layout (drag-resize chart cards) | ⬜ | — | `start phase 13` |
+| 13 | Dashboard layout (drag-resize chart cards) | ✅ | — | `start phase 13` |
 | 14 | Polish: dark mode, animations, error states, skeletons | ⬜ | — | `start phase 14` |
 | 15 | SQL DB connector (Postgres / MySQL / SQLite) | ⬜ | — | `start phase 15` |
 | 16 | Save / share dashboards (persistence) | ⬜ | — | `start phase 16` |
@@ -303,9 +303,9 @@ ai-data-analyst/
 
 ### Phase 13 — Dashboard layout
 
-- [ ] `react-grid-layout` for drag-resize cards
-- [ ] "Pin to dashboard" button on any chart
-- [ ] Save dashboard layout per conversation
+- [x] `react-grid-layout` for drag-resize cards
+- [x] "Pin to dashboard" button on any chart
+- [x] Save dashboard layout per conversation
 
 ### Phase 14 — Polish
 
@@ -446,9 +446,9 @@ Use this section when sharing the project with another developer/agent so they c
 
 ### Current completion checkpoint
 
-- Phases **0 → 12** are completed.
-- Last completed phase: **12 (Memory & history)**.
-- Next phase to start: **13 (Dashboard layout)**.
+- Phases **0 → 13** are completed.
+- Last completed phase: **13 (Dashboard layout)**.
+- Next phase to start: **14 (Polish)**.
 
 ### Verified runtime stack
 
@@ -471,4 +471,4 @@ Use this section when sharing the project with another developer/agent so they c
 
 1. Run backend and frontend.
 2. Confirm `/chat` works with uploaded sample dataset.
-3. Start Phase 12 checklist in this file from top to bottom.
+3. Start Phase 14 checklist in this file from top to bottom.

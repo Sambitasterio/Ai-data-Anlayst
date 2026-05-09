@@ -12,9 +12,10 @@ const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
 type ChartCardProps = {
   spec: PlotlyChartSpec;
   title?: string;
+  onPin?: () => void;
 };
 
-export function ChartCard({ spec, title = "Chart" }: ChartCardProps) {
+export function ChartCard({ spec, title = "Chart", onPin }: ChartCardProps) {
   const [isLarge, setIsLarge] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [graphDiv, setGraphDiv] = useState<unknown>(null);
@@ -64,10 +65,22 @@ export function ChartCard({ spec, title = "Chart" }: ChartCardProps) {
       <div className="mb-2 flex items-center justify-between">
         <p className="text-sm font-medium">{title}</p>
         <div className="flex gap-2">
+          {onPin ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="no-drag"
+              onClick={onPin}
+            >
+              Pin to Dashboard
+            </Button>
+          ) : null}
           <Button
             type="button"
             variant="outline"
             size="sm"
+            className="no-drag"
             onClick={() => setIsLarge((prev) => !prev)}
           >
             {isLarge ? "Compact" : "Resize"}
@@ -76,11 +89,18 @@ export function ChartCard({ spec, title = "Chart" }: ChartCardProps) {
             type="button"
             variant="outline"
             size="sm"
+            className="no-drag"
             onClick={() => setIsFullscreen((prev) => !prev)}
           >
             {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
           </Button>
-          <Button type="button" variant="outline" size="sm" onClick={exportAsPng}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="no-drag"
+            onClick={exportAsPng}
+          >
             Export PNG
           </Button>
         </div>

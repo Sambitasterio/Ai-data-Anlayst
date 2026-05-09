@@ -1,3 +1,5 @@
+import json
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -5,6 +7,7 @@ from app.core.database import get_db_session
 from app.models import Conversation, ConversationMessage
 from app.schemas import (
     ConversationCreateRequest,
+    ConversationDashboardUpdateRequest,
     ConversationDetailResponse,
     ConversationMessageResponse,
     ConversationSummaryResponse,
@@ -15,6 +18,18 @@ from app.schemas import (
 router = APIRouter(prefix="/conversations", tags=["conversations"])
 
 
+def _safe_json_list(value: str | None) -> list[dict[str, object]]:
+    if not value:
+        return []
+    try:
+        parsed = json.loads(value)
+        if isinstance(parsed, list):
+            return [item for item in parsed if isinstance(item, dict)]
+    except json.JSONDecodeError:
+        return []
+    return []
+
+
 def _to_summary(conversation: Conversation) -> ConversationSummaryResponse:
     return ConversationSummaryResponse(
         id=conversation.id,
@@ -22,6 +37,8 @@ def _to_summary(conversation: Conversation) -> ConversationSummaryResponse:
         dataset_id=conversation.dataset_id,
         created_at=conversation.created_at.isoformat(),
         updated_at=conversation.updated_at.isoformat(),
+        dashboard_layout=_safe_json_list(conversation.dashboard_layout),
+        dashboard_items=_safe_json_list(conversation.dashboard_items),
     )
 
 
@@ -40,6 +57,8 @@ def create_conversation(
     conversation = Conversation(
         title=title,
         dataset_id=request.dataset_id,
+        dashboard_layout="[]",
+        dashboard_items="[]",
     )
     db.add(conversation)
     db.commit()
@@ -103,3 +122,20 @@ def delete_conversation(conversation_id: str, db: Session = Depends(get_db_sessi
     db.delete(conversation)
     db.commit()
     return {"ok": True}
+
+
+@router.patch("/{conversation_id}/dashboard", response_model=ConversationSummaryResponse)
+def update_dashboard(
+    conversation_id: str,
+    request: ConversationDashboardUpdateRequest,
+    db: Session = Depends(get_db_session),
+) -> ConversationSummaryResponse:
+    conversation = db.query(Conversation).filter(Conversation.id == conversation_id).first()
+    if conversation is None:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    conversation.dashboard_layout = json.dumps(request.dashboard_layout)
+    conversation.dashboard_items = json.dumps(request.dashboard_items)
+    db.commit()
+    db.refresh(conversation)
+    return _to_summary(conversation)

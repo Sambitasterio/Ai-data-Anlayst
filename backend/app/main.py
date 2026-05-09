@@ -3,6 +3,7 @@ from app.api.chat import router as chat_router
 from app.api.conversations import router as conversations_router
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 from app.api.upload import router as upload_router
 from app.core.config import get_settings
@@ -31,6 +32,23 @@ def health() -> dict[str, str]:
 @app.on_event("startup")
 def init_database() -> None:
     Base.metadata.create_all(bind=engine)
+    with engine.begin() as connection:
+        conversation_columns = {
+            row[1]
+            for row in connection.execute(text("PRAGMA table_info(conversations)")).fetchall()
+        }
+        if "dashboard_layout" not in conversation_columns:
+            connection.execute(
+                text(
+                    "ALTER TABLE conversations ADD COLUMN dashboard_layout TEXT NOT NULL DEFAULT '[]'"
+                )
+            )
+        if "dashboard_items" not in conversation_columns:
+            connection.execute(
+                text(
+                    "ALTER TABLE conversations ADD COLUMN dashboard_items TEXT NOT NULL DEFAULT '[]'"
+                )
+            )
 
 
 app.include_router(upload_router)
