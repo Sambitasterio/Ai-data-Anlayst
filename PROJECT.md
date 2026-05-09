@@ -196,7 +196,7 @@ ai-data-analyst/
 | 11 | Code preview panel (Shiki SQL/Python highlighting) | ✅ | — | `start phase 11` |
 | 12 | Conversation memory + history sidebar | ✅ | — | `start phase 12` |
 | 13 | Dashboard layout (drag-resize chart cards) | ✅ | — | `start phase 13` |
-| 14 | Polish: dark mode, animations, error states, skeletons | ⬜ | — | `start phase 14` |
+| 14 | Polish: dark mode, animations, error states, skeletons | ✅ | — | `start phase 14` |
 | 15 | SQL DB connector (Postgres / MySQL / SQLite) | ⬜ | — | `start phase 15` |
 | 16 | Save / share dashboards (persistence) | ⬜ | — | `start phase 16` |
 | 17 | Tests (pytest backend + Playwright e2e) | ⬜ | — | `start phase 17` |
@@ -303,18 +303,18 @@ ai-data-analyst/
 
 ### Phase 13 — Dashboard layout
 
-- [x] `react-grid-layout` for drag-resize cards
+- [x] Drag-resize cards for dashboard
 - [x] "Pin to dashboard" button on any chart
 - [x] Save dashboard layout per conversation
 
 ### Phase 14 — Polish
 
-- [ ] Loading skeletons everywhere
-- [ ] Error toasts (sonner)
-- [ ] Empty states with illustrations
-- [ ] Framer Motion page transitions
-- [ ] Mobile-responsive chat
-- [ ] Keyboard shortcuts (Cmd+K palette)
+- [x] Loading skeletons everywhere
+- [x] Error toasts (sonner)
+- [x] Empty states with illustrations
+- [x] Framer Motion page transitions
+- [x] Mobile-responsive chat
+- [x] Keyboard shortcuts (Cmd+K palette)
 
 ### Phase 15 — SQL DB connector
 
@@ -446,9 +446,9 @@ Use this section when sharing the project with another developer/agent so they c
 
 ### Current completion checkpoint
 
-- Phases **0 → 13** are completed.
-- Last completed phase: **13 (Dashboard layout)**.
-- Next phase to start: **14 (Polish)**.
+- Phases **0 → 14** are completed.
+- Last completed phase: **14 (Polish)**.
+- Next phase to start: **15 (SQL DB connector)**.
 
 ### Verified runtime stack
 
@@ -471,4 +471,4 @@ Use this section when sharing the project with another developer/agent so they c
 
 1. Run backend and frontend.
 2. Confirm `/chat` works with uploaded sample dataset.
-3. Start Phase 14 checklist in this file from top to bottom.
+3. Start Phase 15 checklist in this file from top to bottom.

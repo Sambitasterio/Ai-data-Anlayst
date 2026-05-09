@@ -3,7 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
+import { AnimatePresence, motion } from "framer-motion";
+import { Command, LayoutDashboard, MessageSquareDashed, PanelLeft } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import { toast } from "sonner";
 
 import { CodePreview } from "@/components/chat/code-preview";
 import {
@@ -41,6 +44,10 @@ export function ChatWindow() {
   const [conversationId, setConversationId] = useState<string>("");
   const [dashboardItems, setDashboardItems] = useState<DashboardItem[]>([]);
   const [dashboardLayout, setDashboardLayout] = useState<DashboardLayoutItem[]>([]);
+  const [isDatasetsLoading, setIsDatasetsLoading] = useState(true);
+  const [isConversationsLoading, setIsConversationsLoading] = useState(true);
+  const [isHistoryOpenMobile, setIsHistoryOpenMobile] = useState(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const conversationIdRef = useRef<string>("");
   const datasetIdRef = useRef<string>("");
   const dashboardItemsRef = useRef<DashboardItem[]>([]);
@@ -109,7 +116,22 @@ export function ChatWindow() {
   }, [dashboardLayout]);
 
   useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setIsCommandPaletteOpen((prev) => !prev);
+      }
+      if (event.key === "Escape") {
+        setIsCommandPaletteOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  useEffect(() => {
     const loadDatasets = async () => {
+      setIsDatasetsLoading(true);
       try {
         const items = await listDatasets();
         setDatasets(items);
@@ -119,6 +141,9 @@ export function ChatWindow() {
         }
       } catch {
         setDatasets([]);
+        toast.error("Failed to load datasets.");
+      } finally {
+        setIsDatasetsLoading(false);
       }
     };
 
@@ -127,11 +152,15 @@ export function ChatWindow() {
 
   useEffect(() => {
     const loadConversations = async () => {
+      setIsConversationsLoading(true);
       try {
         const items = await listConversations();
         setConversations(items);
       } catch {
         setConversations([]);
+        toast.error("Failed to load conversation history.");
+      } finally {
+        setIsConversationsLoading(false);
       }
     };
 
@@ -153,6 +182,7 @@ export function ChatWindow() {
       setDatasetSummary(`${preview.rows.length} preview rows loaded`);
     } catch {
       setDatasetSummary("");
+      toast.error("Failed to load dataset preview.");
     }
   };
 
@@ -206,10 +236,12 @@ export function ChatWindow() {
       if (detail.dataset_id) {
         await handleDatasetChange(detail.dataset_id);
       }
+      setIsHistoryOpenMobile(false);
     } catch {
       setMessages([]);
       setDashboardItems([]);
       setDashboardLayout([]);
+      toast.error("Could not open conversation.");
     }
   };
 
@@ -233,8 +265,9 @@ export function ChatWindow() {
     try {
       const updated = await renameConversation(id, nextTitle.trim());
       setConversations((prev) => prev.map((item) => (item.id === id ? updated : item)));
+      toast.success("Conversation renamed.");
     } catch {
-      // Ignore rename errors in UI; user can retry.
+      toast.error("Rename failed. Try again.");
     }
   };
 
@@ -245,8 +278,9 @@ export function ChatWindow() {
       if (conversationId === id) {
         handleNewChat();
       }
+      toast.success("Conversation deleted.");
     } catch {
-      // Ignore delete errors in UI; user can retry.
+      toast.error("Delete failed. Try again.");
     }
   };
 
@@ -269,7 +303,7 @@ export function ChatWindow() {
         await handleSelectConversation(newestConversation.id);
       }
     } catch {
-      // Keep existing list if refresh fails.
+      toast.error("Message sent, but history refresh failed.");
     }
   };
 
@@ -287,7 +321,7 @@ export function ChatWindow() {
       });
       setConversations((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
     } catch {
-      // Keep local dashboard state; user can retry by moving/pinning again.
+      toast.error("Could not save dashboard layout.");
     }
   };
 
@@ -344,17 +378,114 @@ export function ChatWindow() {
     void saveDashboard(nextLayout, nextItems);
   };
 
+  const commandActions = [
+    {
+      label: "New chat",
+      hint: "Reset current draft",
+      run: () => {
+        handleNewChat();
+        setIsCommandPaletteOpen(false);
+      },
+    },
+    {
+      label: "Sample question",
+      hint: "How many rows are in this dataset?",
+      run: () => {
+        setInput("How many rows are in this dataset?");
+        setIsCommandPaletteOpen(false);
+      },
+    },
+    {
+      label: "Open history (mobile)",
+      hint: "Show chat sidebar",
+      run: () => {
+        setIsHistoryOpenMobile(true);
+        setIsCommandPaletteOpen(false);
+      },
+    },
+  ];
+
   return (
-    <div className="mx-auto flex h-[80vh] w-full max-w-6xl gap-4">
-      <aside className="w-72 shrink-0 rounded-lg border p-3">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 lg:h-[80vh] lg:flex-row">
+      <AnimatePresence>
+        {isCommandPaletteOpen ? (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 pt-24"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsCommandPaletteOpen(false)}
+          >
+            <motion.div
+              className="w-full max-w-lg rounded-xl border bg-card p-3 shadow-xl"
+              initial={{ y: -12, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: -12, opacity: 0 }}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="mb-2 flex items-center justify-between px-1">
+                <p className="text-sm font-medium">Command Palette</p>
+                <span className="text-xs text-muted-foreground">Ctrl/Cmd + K</span>
+              </div>
+              <div className="space-y-1">
+                {commandActions.map((action) => (
+                  <button
+                    key={action.label}
+                    type="button"
+                    className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm hover:bg-muted"
+                    onClick={action.run}
+                  >
+                    <span>{action.label}</span>
+                    <span className="text-xs text-muted-foreground">{action.hint}</span>
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+
+      <aside
+        className={cn(
+          "w-full shrink-0 rounded-lg border p-3 lg:block lg:w-72",
+          isHistoryOpenMobile ? "block" : "hidden",
+          "lg:h-auto"
+        )}
+      >
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-medium">History</h2>
-          <Button type="button" size="sm" variant="outline" onClick={handleNewChat}>
-            New chat
-          </Button>
+          <div className="flex gap-2">
+            <Button type="button" size="sm" variant="outline" onClick={handleNewChat}>
+              New chat
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="lg:hidden"
+              onClick={() => setIsHistoryOpenMobile(false)}
+            >
+              Close
+            </Button>
+          </div>
         </div>
-        <ScrollArea className="h-[calc(80vh-7rem)]">
+        <ScrollArea className="h-[45vh] lg:h-[calc(80vh-7rem)]">
           <div className="space-y-2">
+            {isConversationsLoading ? (
+              <div className="space-y-2">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <div key={index} className="h-16 animate-pulse rounded-md border bg-muted/30" />
+                ))}
+              </div>
+            ) : null}
+            {!isConversationsLoading && conversations.length === 0 ? (
+              <div className="rounded-md border border-dashed p-4 text-center text-xs text-muted-foreground">
+                <MessageSquareDashed className="mx-auto mb-2 h-5 w-5 opacity-70" />
+                No conversations yet.
+                <br />
+                Ask your first question to start one.
+              </div>
+            ) : null}
             {conversations.map((conversation) => (
               <div
                 key={conversation.id}
@@ -388,6 +519,34 @@ export function ChatWindow() {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col gap-4">
+        <div className="flex items-center justify-between lg:hidden">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setIsHistoryOpenMobile((prev) => !prev)}
+          >
+            <PanelLeft className="mr-2 h-4 w-4" />
+            History
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setIsCommandPaletteOpen(true)}
+          >
+            <Command className="mr-2 h-4 w-4" />
+            Commands
+          </Button>
+        </div>
+
+        <div className="hidden items-center justify-end lg:flex">
+          <Button type="button" variant="outline" size="sm" onClick={() => setIsCommandPaletteOpen(true)}>
+            <Command className="mr-2 h-4 w-4" />
+            Command Palette
+          </Button>
+        </div>
+
         <div className="space-y-3 rounded-lg border p-3">
           <DatasetDropzone
             onUploaded={(dataset, preview) => {
@@ -398,11 +557,12 @@ export function ChatWindow() {
             }}
           />
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
             <select
               className="h-9 flex-1 rounded-md border bg-background px-3 text-sm"
               value={datasetId}
               onChange={(e) => void handleDatasetChange(e.target.value)}
+              disabled={isDatasetsLoading}
             >
               <option value="">Select dataset</option>
               {datasets.map((dataset) => (
@@ -415,6 +575,15 @@ export function ChatWindow() {
               Sample Q
             </Button>
           </div>
+          {isDatasetsLoading ? (
+            <div className="h-8 animate-pulse rounded bg-muted/30" />
+          ) : null}
+          {!isDatasetsLoading && datasets.length === 0 ? (
+            <div className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+              <LayoutDashboard className="mb-1 h-4 w-4" />
+              No dataset uploaded yet. Drop a CSV/Excel file above to start.
+            </div>
+          ) : null}
         </div>
 
         <div className="text-sm text-muted-foreground">
@@ -434,8 +603,9 @@ export function ChatWindow() {
 
         <ScrollArea className="flex-1 rounded-lg border p-4">
           <div className="space-y-4">
-            {messages.map((message) => (
-              (() => {
+            <AnimatePresence initial={false}>
+              {messages.map((message) =>
+                (() => {
                 const textContent = message.parts.reduce((acc, part) => {
                   if (part.type === "text") {
                     return acc + part.text;
@@ -450,7 +620,12 @@ export function ChatWindow() {
 
                 if (chartSpec) {
                   return (
-                    <div key={message.id} className="space-y-2">
+                    <motion.div
+                      key={message.id}
+                      className="space-y-2"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                    >
                       <div className="max-w-[85%] rounded-lg bg-muted px-3 py-2 text-sm text-foreground">
                         Rendered chart from assistant response.
                       </div>
@@ -460,12 +635,17 @@ export function ChatWindow() {
                         onPin={() => handlePinChart(chartSpec)}
                       />
                       <CodePreview sql={decoded.meta.sql} python={decoded.meta.python} />
-                    </div>
+                    </motion.div>
                   );
                 }
 
                 return (
-                  <div key={message.id} className="space-y-2">
+                  <motion.div
+                    key={message.id}
+                    className="space-y-2"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                  >
                     <div
                       className={cn(
                         "max-w-[85%] rounded-lg px-3 py-2 text-sm",
@@ -479,10 +659,23 @@ export function ChatWindow() {
                     {message.role === "assistant" ? (
                       <CodePreview sql={decoded.meta.sql} python={decoded.meta.python} />
                     ) : null}
-                  </div>
+                  </motion.div>
                 );
               })()
-            ))}
+              )}
+            </AnimatePresence>
+            {isLoading ? (
+              <div className="space-y-2">
+                <div className="h-16 w-2/3 animate-pulse rounded-lg bg-muted/30" />
+                <div className="h-16 w-1/2 animate-pulse rounded-lg bg-muted/30" />
+              </div>
+            ) : null}
+            {!isLoading && messages.length === 0 ? (
+              <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+                <MessageSquareDashed className="mx-auto mb-2 h-5 w-5 opacity-70" />
+                Start by asking a question about your uploaded dataset.
+              </div>
+            ) : null}
             <div ref={bottomRef} />
           </div>
         </ScrollArea>
@@ -496,7 +689,7 @@ export function ChatWindow() {
             event.preventDefault();
             void handleSend();
           }}
-          className="flex items-center gap-2"
+          className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center"
         >
           <Input
             value={input}

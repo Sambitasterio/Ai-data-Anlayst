@@ -6,7 +6,7 @@ Talk to your data with a full-stack app:
 - execute SQL/Python tool paths
 - stream responses in chat UI
 
-This README reflects the current build status through **Phase 13**.
+This README reflects the current build status through **Phase 14**.
 
 ## Current Status
 
@@ -25,6 +25,7 @@ Completed phases:
 - Phase 11: Shiki-powered code preview panel (SQL/Python tabs + copy)
 - Phase 12: conversation memory + history sidebar (new/rename/delete + reload)
 - Phase 13: dashboard layout with pin-able, drag-resize chart cards per conversation
+- Phase 14: polish pass (skeletons, toasts, empty states, transitions, mobile UI, command palette)
 
 ## Project Structure
 
@@ -123,6 +124,12 @@ Notes:
 - Chart controls: resize, fullscreen, export PNG
 - Pin chart to dashboard + drag/resizable dashboard cards
 - Collapsible code preview with SQL/Python tabs and copy button
+- Skeleton loading states for datasets/history/chat responses
+- Toast notifications for API/UI errors and conversation actions
+- Empty states for conversations, datasets, and chat start
+- Framer Motion entry transitions for chat page and message items
+- Mobile-friendly chat layout with togglable history panel
+- Keyboard shortcut palette (`Ctrl/Cmd + K`) for quick actions
 
 ## API Quick Reference
 
@@ -161,4 +168,4 @@ curl --no-buffer -N \
 
 ## Next Planned Phase
 
-Phase 14: polish (skeletons, error toasts, empty states, transitions, mobile UX).
+Phase 15: SQL DB connector (connection form, secure creds, schema introspection, read-only guardrails).

@@ -77,7 +77,8 @@ export function DashboardGrid({
               position={{ x: itemLayout.x, y: itemLayout.y }}
               minWidth={320}
               minHeight={220}
-              dragHandleClassName="drag-handle"
+              dragHandleClassName="dashboard-drag-handle"
+              cancel=".no-drag, .no-drag *"
               onDragStop={(_, data) => {
                 publishLayout(
                   withDefaults.map((entry) =>
@@ -102,8 +103,8 @@ export function DashboardGrid({
               }}
             >
               <div className="h-full rounded-lg border bg-background p-2 shadow-sm">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="drag-handle cursor-move text-xs font-medium text-muted-foreground">
+                <div className="dashboard-drag-handle mb-2 flex cursor-move items-center justify-between rounded px-1 py-0.5">
+                  <p className="text-xs font-medium text-muted-foreground">
                     Drag
                   </p>
                   <button
