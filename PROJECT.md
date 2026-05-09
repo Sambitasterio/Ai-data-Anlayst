@@ -193,7 +193,7 @@ ai-data-analyst/
 | 8 | Add `run_python` + `make_chart` tools | ✅ | — | `start phase 8` |
 | 9 | LangGraph multi-node flow (Plan → Execute → Reflect) | ✅ | — | `start phase 9` |
 | 10 | Plotly chart rendering on frontend | ✅ | — | `start phase 10` |
-| 11 | Code preview panel (Shiki SQL/Python highlighting) | ⬜ | — | `start phase 11` |
+| 11 | Code preview panel (Shiki SQL/Python highlighting) | ✅ | — | `start phase 11` |
 | 12 | Conversation memory + history sidebar | ⬜ | — | `start phase 12` |
 | 13 | Dashboard layout (drag-resize chart cards) | ⬜ | — | `start phase 13` |
 | 14 | Polish: dark mode, animations, error states, skeletons | ⬜ | — | `start phase 14` |
@@ -289,10 +289,10 @@ ai-data-analyst/
 
 ### Phase 11 — Code preview panel
 
-- [ ] Install `shiki`
-- [ ] Collapsible "Show code" section on each assistant message
-- [ ] SQL + Python tabs
-- [ ] Copy-to-clipboard button
+- [x] Install `shiki`
+- [x] Collapsible "Show code" section on each assistant message
+- [x] SQL + Python tabs
+- [x] Copy-to-clipboard button
 
 ### Phase 12 — Memory & history
 

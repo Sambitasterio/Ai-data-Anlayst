@@ -5,12 +5,14 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import ReactMarkdown from "react-markdown";
 
+import { CodePreview } from "@/components/chat/code-preview";
 import { ChartCard } from "@/components/dashboard/chart-card";
 import { DatasetDropzone } from "@/components/upload/dropzone";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getDatasetPreview, listDatasets, type DatasetInfo } from "@/lib/api";
+import { decodeCodeMeta } from "@/lib/code-meta";
 import { extractChartSpecFromText } from "@/lib/plotly-loader";
 import { cn } from "@/lib/utils";
 
@@ -144,9 +146,10 @@ export function ChatWindow() {
                 }
                 return acc;
               }, "");
+              const decoded = decodeCodeMeta(textContent);
               const chartSpec =
                 message.role === "assistant"
-                  ? extractChartSpecFromText(textContent)
+                  ? extractChartSpecFromText(decoded.content)
                   : null;
 
               if (chartSpec) {
@@ -156,21 +159,26 @@ export function ChatWindow() {
                       Rendered chart from assistant response.
                     </div>
                     <ChartCard spec={chartSpec} title="Assistant Chart" />
+                    <CodePreview sql={decoded.meta.sql} python={decoded.meta.python} />
                   </div>
                 );
               }
 
               return (
-                <div
-                  key={message.id}
-                  className={cn(
-                    "max-w-[85%] rounded-lg px-3 py-2 text-sm",
-                    message.role === "user"
-                      ? "ml-auto bg-primary text-primary-foreground"
-                      : "bg-muted text-foreground"
-                  )}
-                >
-                  <ReactMarkdown>{textContent}</ReactMarkdown>
+                <div key={message.id} className="space-y-2">
+                  <div
+                    className={cn(
+                      "max-w-[85%] rounded-lg px-3 py-2 text-sm",
+                      message.role === "user"
+                        ? "ml-auto bg-primary text-primary-foreground"
+                        : "bg-muted text-foreground"
+                    )}
+                  >
+                    <ReactMarkdown>{decoded.content}</ReactMarkdown>
+                  </div>
+                  {message.role === "assistant" ? (
+                    <CodePreview sql={decoded.meta.sql} python={decoded.meta.python} />
+                  ) : null}
                 </div>
               );
             })()

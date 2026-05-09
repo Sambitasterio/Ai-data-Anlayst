@@ -12,6 +12,7 @@ class AgentState(TypedDict):
     attempt: int
     answer: str
     sql: str
+    python: str
     error: str
     transitions: list[str]
 
@@ -52,6 +53,10 @@ def _execute_node(state: AgentState) -> AgentState:
                 **state,
                 "answer": answer,
                 "sql": "run_python",
+                "python": (
+                    "result = int(df['quantity'].sum()) "
+                    "if 'quantity' in df.columns else len(df)"
+                ),
                 "error": "",
                 "transitions": _append_transition(state, "execute"),
             }
@@ -86,6 +91,7 @@ def _execute_node(state: AgentState) -> AgentState:
                     "GROUP BY category ORDER BY total_quantity DESC"
                 ),
                 "error": "",
+                "python": "",
                 "transitions": _append_transition(state, "execute"),
             }
 
@@ -100,6 +106,7 @@ def _execute_node(state: AgentState) -> AgentState:
             "answer": answer,
             "sql": query,
             "error": "",
+            "python": "",
             "transitions": _append_transition(state, "execute"),
         }
     except Exception as exc:
@@ -120,6 +127,7 @@ def _reflect_node(state: AgentState) -> AgentState:
             "sql": "",
             "answer": "",
             "error": "",
+            "python": "",
             "transitions": _append_transition(state, "reflect"),
         }
 
@@ -148,6 +156,7 @@ def _respond_node(state: AgentState) -> AgentState:
         **state,
         "answer": f"Unable to answer: {state.get('error', 'unknown error')}",
         "sql": state.get("sql", ""),
+        "python": state.get("python", ""),
         "transitions": _append_transition(state, "respond"),
     }
 
@@ -180,6 +189,7 @@ def ask_dataset(question: str, dataset_id: str) -> dict[str, str | list[str]]:
         "attempt": 0,
         "answer": "",
         "sql": "",
+        "python": "",
         "error": "",
         "transitions": [],
     }
@@ -187,5 +197,6 @@ def ask_dataset(question: str, dataset_id: str) -> dict[str, str | list[str]]:
     return {
         "answer": str(final_state.get("answer", "")),
         "sql": str(final_state.get("sql", "")),
+        "python": str(final_state.get("python", "")),
         "transitions": list(final_state.get("transitions", [])),
     }

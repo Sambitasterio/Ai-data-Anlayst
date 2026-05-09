@@ -21,7 +21,14 @@ def _chat_stream(question: str, dataset_id: str) -> Iterator[str]:
         transitions = result.get("transitions", [])
         for node in transitions:
             yield _sse_event("thought", {"message": f"{node} node"})
-        yield _sse_event("final", {"answer": result["answer"], "sql": result["sql"]})
+        yield _sse_event(
+            "final",
+            {
+                "answer": result["answer"],
+                "sql": result["sql"],
+                "python": result.get("python", ""),
+            },
+        )
     except KeyError:
         yield _sse_event(
             "final",
@@ -30,12 +37,13 @@ def _chat_stream(question: str, dataset_id: str) -> Iterator[str]:
                     "Dataset not found. Please upload the file again and use the new dataset_id."
                 ),
                 "sql": "",
+                "python": "",
             },
         )
     except Exception as exc:
         yield _sse_event(
             "final",
-            {"answer": f"Chat processing failed: {exc}", "sql": ""},
+            {"answer": f"Chat processing failed: {exc}", "sql": "", "python": ""},
         )
     yield _sse_event("done", {"ok": True})
 

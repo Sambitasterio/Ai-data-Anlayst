@@ -6,7 +6,7 @@ Talk to your data with a full-stack app:
 - execute SQL/Python tool paths
 - stream responses in chat UI
 
-This README reflects the current build status through **Phase 9**.
+This README reflects the current build status through **Phase 11**.
 
 ## Current Status
 
@@ -21,6 +21,8 @@ Completed phases:
 - Phase 7: file upload UI + dataset switcher + preview table
 - Phase 8: `run_python` + `make_chart` tools + tool-use logging
 - Phase 9: LangGraph flow (`Plan -> Execute -> Reflect -> Respond`) + retry path
+- Phase 10: Plotly chart rendering inline in chat
+- Phase 11: Shiki-powered code preview panel (SQL/Python tabs + copy)
 
 ## Project Structure
 
@@ -110,6 +112,9 @@ Notes:
 - Dataset switcher in chat header
 - Preview table for uploaded data
 - Stop and regenerate controls
+- Inline Plotly chart rendering for assistant chart specs
+- Chart controls: resize, fullscreen, export PNG
+- Collapsible code preview with SQL/Python tabs and copy button
 
 ## API Quick Reference
 
@@ -148,4 +153,4 @@ curl --no-buffer -N \
 
 ## Next Planned Phase
 
-Phase 10: render Plotly chart specs in frontend chat as actual charts.
+Phase 12: conversation memory + history sidebar.
