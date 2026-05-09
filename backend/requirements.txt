@@ -10,3 +10,6 @@ langchain
 langchain-openai
 langchain-classic
 sqlalchemy
+cryptography
+psycopg2-binary
+pymysql

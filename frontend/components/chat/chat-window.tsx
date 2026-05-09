@@ -20,7 +20,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
+  connectSqlDatabase,
   deleteConversation,
+  disconnectSqlDatabase,
+  getSqlStatus,
   getConversation,
   getDatasetPreview,
   listConversations,
@@ -30,6 +33,7 @@ import {
   type ConversationMessage,
   type ConversationSummary,
   type DatasetInfo,
+  type SQLConnectionStatus,
 } from "@/lib/api";
 import { decodeCodeMeta } from "@/lib/code-meta";
 import { extractChartSpecFromText } from "@/lib/plotly-loader";
@@ -40,6 +44,18 @@ export function ChatWindow() {
   const [datasets, setDatasets] = useState<DatasetInfo[]>([]);
   const [datasetMeta, setDatasetMeta] = useState<DatasetInfo | null>(null);
   const [datasetSummary, setDatasetSummary] = useState<string>("");
+  const [sqlStatus, setSqlStatus] = useState<SQLConnectionStatus | null>(null);
+  const [isSqlConnecting, setIsSqlConnecting] = useState(false);
+  const [sqlForm, setSqlForm] = useState({
+    db_type: "postgres" as "postgres" | "mysql" | "sqlite",
+    host: "",
+    port: "5432",
+    username: "",
+    password: "",
+    database: "",
+    sqlite_path: "",
+    name: "",
+  });
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [conversationId, setConversationId] = useState<string>("");
   const [dashboardItems, setDashboardItems] = useState<DashboardItem[]>([]);
@@ -167,8 +183,25 @@ export function ChatWindow() {
     void loadConversations();
   }, []);
 
+  useEffect(() => {
+    const loadSqlStatus = async () => {
+      try {
+        const status = await getSqlStatus();
+        setSqlStatus(status);
+      } catch {
+        setSqlStatus(null);
+      }
+    };
+    void loadSqlStatus();
+  }, []);
+
   const handleDatasetChange = async (newDatasetId: string) => {
     setDatasetId(newDatasetId);
+    if (newDatasetId.startsWith("sql:")) {
+      setDatasetMeta(null);
+      setDatasetSummary("Connected SQL source");
+      return;
+    }
     const selected = datasets.find((item) => item.id === newDatasetId) ?? null;
     setDatasetMeta(selected);
 
@@ -183,6 +216,51 @@ export function ChatWindow() {
     } catch {
       setDatasetSummary("");
       toast.error("Failed to load dataset preview.");
+    }
+  };
+
+  const handleConnectSql = async () => {
+    try {
+      setIsSqlConnecting(true);
+      const status = await connectSqlDatabase({
+        db_type: sqlForm.db_type,
+        host: sqlForm.db_type === "sqlite" ? undefined : sqlForm.host || undefined,
+        port:
+          sqlForm.db_type === "sqlite"
+            ? undefined
+            : sqlForm.port
+              ? Number(sqlForm.port)
+              : undefined,
+        username: sqlForm.db_type === "sqlite" ? undefined : sqlForm.username || undefined,
+        password: sqlForm.db_type === "sqlite" ? undefined : sqlForm.password || undefined,
+        database: sqlForm.db_type === "sqlite" ? undefined : sqlForm.database || undefined,
+        sqlite_path: sqlForm.db_type === "sqlite" ? sqlForm.sqlite_path || undefined : undefined,
+        name: sqlForm.name || undefined,
+      });
+      setSqlStatus(status);
+      if (status.connection) {
+        setDatasetId(`sql:${status.connection.id}`);
+        setDatasetSummary("Connected SQL source");
+      }
+      toast.success("SQL database connected.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to connect SQL database.");
+    } finally {
+      setIsSqlConnecting(false);
+    }
+  };
+
+  const handleDisconnectSql = async () => {
+    try {
+      await disconnectSqlDatabase();
+      setSqlStatus({ connection: null, schema: [] });
+      if (datasetId.startsWith("sql:")) {
+        setDatasetId("");
+        setDatasetSummary("");
+      }
+      toast.success("SQL database disconnected.");
+    } catch {
+      toast.error("Failed to disconnect SQL database.");
     }
   };
 
@@ -557,6 +635,114 @@ export function ChatWindow() {
             }}
           />
 
+          <div className="space-y-2 rounded-md border p-3">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium">SQL Connector</p>
+              {sqlStatus?.connection ? (
+                <span className="text-xs text-emerald-600">
+                  Connected: {sqlStatus.connection.name}
+                </span>
+              ) : (
+                <span className="text-xs text-muted-foreground">Not connected</span>
+              )}
+            </div>
+            <div className="grid gap-2 md:grid-cols-4">
+              <select
+                className="h-9 rounded-md border bg-background px-2 text-sm"
+                value={sqlForm.db_type}
+                onChange={(event) =>
+                  setSqlForm((prev) => ({
+                    ...prev,
+                    db_type: event.target.value as "postgres" | "mysql" | "sqlite",
+                    port: event.target.value === "mysql" ? "3306" : "5432",
+                  }))
+                }
+              >
+                <option value="postgres">Postgres</option>
+                <option value="mysql">MySQL</option>
+                <option value="sqlite">SQLite</option>
+              </select>
+              {sqlForm.db_type === "sqlite" ? (
+                <Input
+                  placeholder="SQLite file path"
+                  value={sqlForm.sqlite_path}
+                  onChange={(event) =>
+                    setSqlForm((prev) => ({ ...prev, sqlite_path: event.target.value }))
+                  }
+                  className="md:col-span-3"
+                />
+              ) : (
+                <>
+                  <Input
+                    placeholder="Host"
+                    value={sqlForm.host}
+                    onChange={(event) =>
+                      setSqlForm((prev) => ({ ...prev, host: event.target.value }))
+                    }
+                  />
+                  <Input
+                    placeholder="Port"
+                    value={sqlForm.port}
+                    onChange={(event) =>
+                      setSqlForm((prev) => ({ ...prev, port: event.target.value }))
+                    }
+                  />
+                  <Input
+                    placeholder="Database"
+                    value={sqlForm.database}
+                    onChange={(event) =>
+                      setSqlForm((prev) => ({ ...prev, database: event.target.value }))
+                    }
+                  />
+                </>
+              )}
+            </div>
+            {sqlForm.db_type !== "sqlite" ? (
+              <div className="grid gap-2 md:grid-cols-3">
+                <Input
+                  placeholder="Username"
+                  value={sqlForm.username}
+                  onChange={(event) =>
+                    setSqlForm((prev) => ({ ...prev, username: event.target.value }))
+                  }
+                />
+                <Input
+                  placeholder="Password"
+                  type="password"
+                  value={sqlForm.password}
+                  onChange={(event) =>
+                    setSqlForm((prev) => ({ ...prev, password: event.target.value }))
+                  }
+                />
+                <Input
+                  placeholder="Connection name (optional)"
+                  value={sqlForm.name}
+                  onChange={(event) =>
+                    setSqlForm((prev) => ({ ...prev, name: event.target.value }))
+                  }
+                />
+              </div>
+            ) : null}
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="outline" onClick={handleConnectSql} disabled={isSqlConnecting}>
+                {isSqlConnecting ? "Connecting..." : "Connect SQL"}
+              </Button>
+              <Button type="button" variant="ghost" onClick={handleDisconnectSql}>
+                Disconnect
+              </Button>
+            </div>
+            {sqlStatus?.schema?.length ? (
+              <div className="max-h-28 overflow-auto rounded border bg-muted/20 p-2 text-xs text-muted-foreground">
+                {sqlStatus.schema.slice(0, 8).map((table) => (
+                  <div key={table.table}>
+                    <span className="font-medium text-foreground">{table.table}</span>:{" "}
+                    {table.columns.slice(0, 8).map((column) => column.name).join(", ")}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+
           <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
             <select
               className="h-9 flex-1 rounded-md border bg-background px-3 text-sm"
@@ -565,6 +751,11 @@ export function ChatWindow() {
               disabled={isDatasetsLoading}
             >
               <option value="">Select dataset</option>
+              {sqlStatus?.connection ? (
+                <option value={`sql:${sqlStatus.connection.id}`}>
+                  SQL: {sqlStatus.connection.name} ({sqlStatus.connection.db_type})
+                </option>
+              ) : null}
               {datasets.map((dataset) => (
                 <option key={dataset.id} value={dataset.id}>
                   {dataset.file_name} ({dataset.id.slice(0, 8)}...)
@@ -587,7 +778,10 @@ export function ChatWindow() {
         </div>
 
         <div className="text-sm text-muted-foreground">
-          Active dataset: {datasetMeta?.file_name || "not set"}
+          Active dataset:{" "}
+          {datasetId.startsWith("sql:")
+            ? sqlStatus?.connection?.name || "SQL source"
+            : datasetMeta?.file_name || "not set"}
           {datasetSummary ? ` · ${datasetSummary}` : ""}
         </div>
 

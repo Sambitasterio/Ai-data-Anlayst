@@ -197,7 +197,7 @@ ai-data-analyst/
 | 12 | Conversation memory + history sidebar | ✅ | — | `start phase 12` |
 | 13 | Dashboard layout (drag-resize chart cards) | ✅ | — | `start phase 13` |
 | 14 | Polish: dark mode, animations, error states, skeletons | ✅ | — | `start phase 14` |
-| 15 | SQL DB connector (Postgres / MySQL / SQLite) | ⬜ | — | `start phase 15` |
+| 15 | SQL DB connector (Postgres / MySQL / SQLite) | ✅ | — | `start phase 15` |
 | 16 | Save / share dashboards (persistence) | ⬜ | — | `start phase 16` |
 | 17 | Tests (pytest backend + Playwright e2e) | ⬜ | — | `start phase 17` |
 | 18 | Deploy (Vercel frontend + Fly.io/Railway backend) | ⬜ | — | `start phase 18` |
@@ -318,10 +318,10 @@ ai-data-analyst/
 
 ### Phase 15 — SQL DB connector
 
-- [ ] Connection form (host, port, user, pass, db)
-- [ ] Encrypted credential storage
-- [ ] Schema introspection → inject into agent prompt
-- [ ] Read-only SQL guardrail
+- [x] Connection form (host, port, user, pass, db)
+- [x] Encrypted credential storage
+- [x] Schema introspection → inject into agent prompt
+- [x] Read-only SQL guardrail
 
 ### Phase 16 — Save / share
 
@@ -446,9 +446,9 @@ Use this section when sharing the project with another developer/agent so they c
 
 ### Current completion checkpoint
 
-- Phases **0 → 14** are completed.
-- Last completed phase: **14 (Polish)**.
-- Next phase to start: **15 (SQL DB connector)**.
+- Phases **0 → 15** are completed.
+- Last completed phase: **15 (SQL DB connector)**.
+- Next phase to start: **16 (Save / share)**.
 
 ### Verified runtime stack
 
@@ -471,4 +471,4 @@ Use this section when sharing the project with another developer/agent so they c
 
 1. Run backend and frontend.
 2. Confirm `/chat` works with uploaded sample dataset.
-3. Start Phase 15 checklist in this file from top to bottom.
+3. Start Phase 16 checklist in this file from top to bottom.

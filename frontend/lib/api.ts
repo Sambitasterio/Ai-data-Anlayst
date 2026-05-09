@@ -40,6 +40,28 @@ export type ConversationDetail = ConversationSummary & {
   messages: ConversationMessage[];
 };
 
+export type SQLColumnSchema = {
+  name: string;
+  type: string;
+};
+
+export type SQLTableSchema = {
+  table: string;
+  columns: SQLColumnSchema[];
+};
+
+export type SQLConnectionSummary = {
+  id: string;
+  name: string;
+  db_type: string;
+  is_active: boolean;
+};
+
+export type SQLConnectionStatus = {
+  connection: SQLConnectionSummary | null;
+  schema: SQLTableSchema[];
+};
+
 export async function listDatasets(): Promise<DatasetInfo[]> {
   const response = await fetch(`${BACKEND_URL}/datasets`, { cache: "no-store" });
   if (!response.ok) {
@@ -148,4 +170,41 @@ export async function updateConversationDashboard(
     throw new Error("Failed to save dashboard.");
   }
   return (await response.json()) as ConversationSummary;
+}
+
+export async function connectSqlDatabase(input: {
+  db_type: "postgres" | "mysql" | "sqlite";
+  host?: string;
+  port?: number;
+  username?: string;
+  password?: string;
+  database?: string;
+  sqlite_path?: string;
+  name?: string;
+}): Promise<SQLConnectionStatus> {
+  const response = await fetch(`${BACKEND_URL}/sql/connect`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(message || "Failed to connect SQL database.");
+  }
+  return (await response.json()) as SQLConnectionStatus;
+}
+
+export async function getSqlStatus(): Promise<SQLConnectionStatus> {
+  const response = await fetch(`${BACKEND_URL}/sql/status`, { cache: "no-store" });
+  if (!response.ok) {
+    throw new Error("Failed to fetch SQL connection status.");
+  }
+  return (await response.json()) as SQLConnectionStatus;
+}
+
+export async function disconnectSqlDatabase(): Promise<void> {
+  const response = await fetch(`${BACKEND_URL}/sql/disconnect`, { method: "POST" });
+  if (!response.ok) {
+    throw new Error("Failed to disconnect SQL database.");
+  }
 }

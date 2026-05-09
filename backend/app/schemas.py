@@ -73,3 +73,36 @@ class ConversationSummaryResponse(BaseModel):
 
 class ConversationDetailResponse(ConversationSummaryResponse):
     messages: list[ConversationMessageResponse]
+
+
+class SQLConnectionConnectRequest(BaseModel):
+    db_type: str
+    host: str | None = None
+    port: int | None = None
+    username: str | None = None
+    password: str | None = None
+    database: str | None = None
+    sqlite_path: str | None = None
+    name: str | None = None
+
+
+class SQLColumnSchema(BaseModel):
+    name: str
+    type: str
+
+
+class SQLTableSchema(BaseModel):
+    table: str
+    columns: list[SQLColumnSchema]
+
+
+class SQLConnectionSummaryResponse(BaseModel):
+    id: str
+    name: str
+    db_type: str
+    is_active: bool
+
+
+class SQLConnectionStatusResponse(BaseModel):
+    connection: SQLConnectionSummaryResponse | None
+    schema: list[SQLTableSchema]

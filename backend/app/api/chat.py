@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.agent.graph import ask_dataset
 from app.core.database import get_db_session
+from app.core.sql_context import build_schema_context_for_dataset_id
 from app.models import Conversation, ConversationMessage
 from app.schemas import ChatRequest
 
@@ -49,6 +50,9 @@ def _chat_stream(
             .all()
         )
         contextual_question = _build_contextual_question(history_messages, question)
+        schema_context = build_schema_context_for_dataset_id(dataset_id=dataset_id, db=db)
+        if schema_context:
+            contextual_question = f"{schema_context}\n\n{contextual_question}"
 
         user_message = ConversationMessage(
             conversation_id=conversation.id,

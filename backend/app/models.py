@@ -60,3 +60,28 @@ class ConversationMessage(Base):
     )
 
     conversation: Mapped[Conversation] = relationship(back_populates="messages")
+
+
+class SQLConnection(Base):
+    __tablename__ = "sql_connections"
+
+    id: Mapped[str] = mapped_column(
+        String(36),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    name: Mapped[str] = mapped_column(String(255), default="External SQL")
+    db_type: Mapped[str] = mapped_column(String(16))
+    encrypted_url: Mapped[str] = mapped_column(Text())
+    is_active: Mapped[str] = mapped_column(String(1), default="1")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )

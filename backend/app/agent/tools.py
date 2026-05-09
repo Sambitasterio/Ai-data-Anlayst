@@ -9,6 +9,10 @@ from langchain_core.tools import StructuredTool
 
 from app.core.config import get_settings
 from app.core.duckdb_engine import get_duckdb_engine
+from app.core.sql_connections import ensure_read_only_query
+from app.core.sql_runtime import run_connection_query
+from app.core.database import SessionLocal
+from app.models import SQLConnection
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +28,30 @@ def _log_tool_use(tool: str, args: dict[str, object], result: object) -> None:
 
 
 def run_sql(query: str, dataset_id: str) -> str:
+    ensure_read_only_query(query)
+    if dataset_id.startswith("sql:"):
+        connection_id = dataset_id.split("sql:", maxsplit=1)[1].strip()
+        if not connection_id:
+            raise ValueError("Invalid SQL connection id")
+        session = SessionLocal()
+        try:
+            connection = (
+                session.query(SQLConnection)
+                .filter(SQLConnection.id == connection_id, SQLConnection.is_active == "1")
+                .first()
+            )
+            if connection is None:
+                raise ValueError("Active SQL connection not found")
+            rows = run_connection_query(connection=connection, query=query)
+        finally:
+            session.close()
+        _log_tool_use(
+            tool="run_sql",
+            args={"dataset_id": dataset_id, "query": query, "source": "external"},
+            result={"rows": len(rows)},
+        )
+        return str(rows)
+
     settings = get_settings()
     engine = get_duckdb_engine(settings.uploads_dir)
     rows = engine.run_sql(dataset_id=dataset_id, query=query)

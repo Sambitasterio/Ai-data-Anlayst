@@ -6,7 +6,7 @@ Talk to your data with a full-stack app:
 - execute SQL/Python tool paths
 - stream responses in chat UI
 
-This README reflects the current build status through **Phase 14**.
+This README reflects the current build status through **Phase 15**.
 
 ## Current Status
 
@@ -26,6 +26,7 @@ Completed phases:
 - Phase 12: conversation memory + history sidebar (new/rename/delete + reload)
 - Phase 13: dashboard layout with pin-able, drag-resize chart cards per conversation
 - Phase 14: polish pass (skeletons, toasts, empty states, transitions, mobile UI, command palette)
+- Phase 15: SQL DB connector (Postgres/MySQL/SQLite) with encrypted credentials + schema-aware prompts
 
 ## Project Structure
 
@@ -130,6 +131,10 @@ Notes:
 - Framer Motion entry transitions for chat page and message items
 - Mobile-friendly chat layout with togglable history panel
 - Keyboard shortcut palette (`Ctrl/Cmd + K`) for quick actions
+- SQL connector form (host/port/user/password/database or SQLite path)
+- External SQL source selection in chat dataset picker
+- Automatic schema introspection attached to agent context for SQL sources
+- Read-only SQL guardrails for internal and external query execution
 
 ## API Quick Reference
 
@@ -168,4 +173,4 @@ curl --no-buffer -N \
 
 ## Next Planned Phase
 
-Phase 15: SQL DB connector (connection form, secure creds, schema introspection, read-only guardrails).
+Phase 16: save/share dashboards with auth, public links, and permissions.
