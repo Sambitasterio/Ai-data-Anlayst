@@ -1,8 +1,80 @@
+import logging
+import re
 from typing import Literal, TypedDict
 
 from langgraph.graph import END, StateGraph
 
+logger = logging.getLogger(__name__)
+
+from app.agent.llm_sql import try_llm_sql_for_upload
 from app.agent.tools import make_chart, run_python, run_sql
+from app.core.config import get_settings
+from app.core.duckdb_engine import get_duckdb_engine
+
+
+def _final_user_question(question: str) -> str:
+    marker = "Final user question:"
+    if marker in question:
+        return question.split(marker, maxsplit=1)[1].strip()
+    return question
+
+
+def _extract_top_limit(text: str, default: int = 5) -> int:
+    m = re.search(r"\btop\s*(\d+)\b", text, re.IGNORECASE)
+    if m:
+        return min(max(int(m.group(1)), 1), 500)
+    return default
+
+
+def _wants_top_line_revenue(text: str) -> bool:
+    if "top" not in text:
+        return False
+    if "line revenue" in text:
+        return True
+    if "order" in text and ("revenue" in text or "line" in text):
+        return True
+    return False
+
+
+def _wants_region_row_filter(text: str) -> bool:
+    t = text.lower()
+    cardinals_re = (r"\bnorth\b", r"\bsouth\b", r"\beast\b", r"\bwest\b")
+    if not any(re.search(p, t) for p in cardinals_re):
+        return False
+    if "region" in t:
+        return True
+    if "where" in t or "all rows" in t or "filter" in t or "only" in t:
+        return True
+    if "rows" in t:
+        return True
+    return False
+
+
+def _region_label_for_filter(text: str) -> str | None:
+    """Match sample data region values North/South/East/West (first whole-word match)."""
+    t = text.lower()
+    for token, label in (
+        ("north", "North"),
+        ("south", "South"),
+        ("east", "East"),
+        ("west", "West"),
+    ):
+        if re.search(rf"\b{token}\b", t):
+            return label
+    return None
+
+
+def _wants_column_schema(text: str) -> bool:
+    t = text.lower()
+    if "what columns" in t or "which columns" in t:
+        return True
+    if "list" in t and "column" in t:
+        return True
+    if "column" in t and ("name" in t or "type" in t or "dtype" in t):
+        return True
+    if "schema" in t and ("column" in t or "table" in t or "dataset" in t):
+        return True
+    return False
 
 
 class AgentState(TypedDict):
@@ -14,6 +86,7 @@ class AgentState(TypedDict):
     sql: str
     python: str
     error: str
+    warning: str
     transitions: list[str]
 
 
@@ -32,6 +105,14 @@ def _plan_node(state: AgentState) -> AgentState:
         plan = "python_total_quantity"
     elif "chart" in text or "plotly" in text or "make_chart" in text:
         plan = "chart_by_category"
+    elif "revenue" in text and "category" in text:
+        plan = "sql_revenue_by_category"
+    elif _wants_top_line_revenue(text):
+        plan = "sql_top_line_revenue"
+    elif _wants_region_row_filter(text):
+        plan = "sql_filter_region"
+    elif _wants_column_schema(text):
+        plan = "dataset_schema"
     elif "how many rows" in text or "row count" in text:
         plan = "sql_row_count"
     else:
@@ -63,6 +144,7 @@ def _execute_node(state: AgentState) -> AgentState:
                     "if 'quantity' in df.columns else len(df)"
                 ),
                 "error": "",
+                "warning": "",
                 "transitions": _append_transition(state, "execute"),
             }
 
@@ -85,6 +167,15 @@ def _execute_node(state: AgentState) -> AgentState:
                 y_key = "total_revenue"
                 y_title = "Revenue"
                 title = "Revenue by Region"
+            elif "revenue" in question_text and "category" in question_text:
+                sql_query = (
+                    "SELECT category, SUM(quantity * unit_price) AS total_revenue "
+                    "FROM {dataset} GROUP BY category ORDER BY total_revenue DESC"
+                )
+                x_key = "category"
+                y_key = "total_revenue"
+                y_title = "Revenue"
+                title = "Revenue by Category"
             elif "customer" in question_text and ("top" in question_text or "spend" in question_text):
                 sql_query = (
                     "SELECT customer, SUM(quantity * unit_price) AS total_spend "
@@ -153,28 +244,124 @@ def _execute_node(state: AgentState) -> AgentState:
                 "answer": answer,
                 "sql": sql_query,
                 "error": "",
+                "warning": "",
                 "python": "",
                 "transitions": _append_transition(state, "execute"),
             }
 
-        query = (
-            "SELECT COUNT(*) AS row_count FROM {dataset}"
-            if state["plan"] == "sql_row_count"
-            else "SELECT * FROM {dataset} LIMIT 5"
-        )
+        if state["plan"] == "sql_revenue_by_category":
+            query = (
+                "SELECT category, SUM(quantity * unit_price) AS total_revenue "
+                "FROM {dataset} GROUP BY category ORDER BY total_revenue DESC"
+            )
+            answer = run_sql(query=query, dataset_id=state["dataset_id"])
+            return {
+                **state,
+                "answer": answer,
+                "sql": query,
+                "error": "",
+                "warning": "",
+                "python": "",
+                "transitions": _append_transition(state, "execute"),
+            }
+
+        if state["plan"] == "sql_top_line_revenue":
+            qt = _final_user_question(state["question"]).lower()
+            n = _extract_top_limit(qt, default=3)
+            query = (
+                "SELECT * FROM {dataset} ORDER BY (quantity * unit_price) DESC "
+                f"LIMIT {n}"
+            )
+            answer = run_sql(query=query, dataset_id=state["dataset_id"])
+            return {
+                **state,
+                "answer": answer,
+                "sql": query,
+                "error": "",
+                "warning": "",
+                "python": "",
+                "transitions": _append_transition(state, "execute"),
+            }
+
+        if state["plan"] == "sql_filter_region":
+            qt = _final_user_question(state["question"]).lower()
+            label = _region_label_for_filter(qt)
+            if label is None:
+                query = "SELECT * FROM {dataset} LIMIT 5"
+                region_warning = (
+                    "Could not detect a region (North/South/East/West) in your question; "
+                    "showing the first 5 rows only."
+                )
+            else:
+                safe = label.replace("'", "''")
+                query = f"SELECT * FROM {{dataset}} WHERE region = '{safe}'"
+                region_warning = ""
+            answer = run_sql(query=query, dataset_id=state["dataset_id"])
+            return {
+                **state,
+                "answer": answer,
+                "sql": query,
+                "error": "",
+                "warning": region_warning,
+                "python": "",
+                "transitions": _append_transition(state, "execute"),
+            }
+
+        if state["plan"] == "dataset_schema":
+            did = state["dataset_id"]
+            if did.startswith("sql:"):
+                answer = (
+                    "This chat is using a live SQL connection. Use the connector’s schema or ask "
+                    "for database metadata (e.g. information_schema) in your question."
+                )
+            else:
+                eng = get_duckdb_engine(get_settings().uploads_dir)
+                rec = eng.get_dataset(did)
+                lines = [f"- {c['name']}: {c['dtype']}" for c in rec.columns]
+                answer = "Column names and dtypes:\n" + "\n".join(lines)
+            return {
+                **state,
+                "answer": answer,
+                "sql": "",
+                "error": "",
+                "warning": "",
+                "python": "",
+                "transitions": _append_transition(state, "execute"),
+            }
+
+        preview_warning = ""
+        if state["plan"] == "sql_row_count":
+            query = "SELECT COUNT(*) AS row_count FROM {dataset}"
+        else:
+            question_text = _final_user_question(state["question"])
+            generated = try_llm_sql_for_upload(
+                question_text,
+                state["dataset_id"],
+                retry_attempt=state.get("attempt", 0),
+            )
+            query = generated if generated else "SELECT * FROM {dataset} LIMIT 5"
+            if not generated:
+                preview_warning = (
+                    "Preview only: no built-in template matched and no SQL was generated "
+                    "(set OPENAI_API_KEY in `.env` for broader natural-language SQL). "
+                    "Showing the first 5 rows — this may not answer your question."
+                )
         answer = run_sql(query=query, dataset_id=state["dataset_id"])
         return {
             **state,
             "answer": answer,
             "sql": query,
             "error": "",
+            "warning": preview_warning,
             "python": "",
             "transitions": _append_transition(state, "execute"),
         }
     except Exception as exc:
+        logger.warning("execute node failed: %s", exc)
         return {
             **state,
             "error": str(exc),
+            "warning": "",
             "transitions": _append_transition(state, "execute"),
         }
 
@@ -190,6 +377,7 @@ def _reflect_node(state: AgentState) -> AgentState:
             "answer": "",
             "error": "",
             "python": "",
+            "warning": "",
             "transitions": _append_transition(state, "reflect"),
         }
 
@@ -253,6 +441,7 @@ def ask_dataset(question: str, dataset_id: str) -> dict[str, str | list[str]]:
         "sql": "",
         "python": "",
         "error": "",
+        "warning": "",
         "transitions": [],
     }
     final_state = agent_graph.invoke(initial_state)
@@ -260,5 +449,6 @@ def ask_dataset(question: str, dataset_id: str) -> dict[str, str | list[str]]:
         "answer": str(final_state.get("answer", "")),
         "sql": str(final_state.get("sql", "")),
         "python": str(final_state.get("python", "")),
+        "warning": str(final_state.get("warning", "")),
         "transitions": list(final_state.get("transitions", [])),
     }

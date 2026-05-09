@@ -6,9 +6,13 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.agent.graph import ask_dataset
+from app.api.deps import get_current_user_optional, ensure_chat_access
 from app.core.database import get_db_session
-from app.core.sql_context import build_schema_context_for_dataset_id
-from app.models import Conversation, ConversationMessage
+from app.core.sql_context import (
+    build_schema_context_for_dataset_id,
+    build_uploaded_dataset_schema_context,
+)
+from app.models import Conversation, ConversationMessage, User
 from app.schemas import ChatRequest
 
 
@@ -51,6 +55,8 @@ def _chat_stream(
         )
         contextual_question = _build_contextual_question(history_messages, question)
         schema_context = build_schema_context_for_dataset_id(dataset_id=dataset_id, db=db)
+        if not schema_context:
+            schema_context = build_uploaded_dataset_schema_context(dataset_id)
         if schema_context:
             contextual_question = f"{schema_context}\n\n{contextual_question}"
 
@@ -84,6 +90,7 @@ def _chat_stream(
                 "answer": assistant_answer,
                 "sql": result["sql"],
                 "python": result.get("python", ""),
+                "warning": result.get("warning", ""),
                 "conversation_id": conversation.id,
                 "conversation_title": conversation.title,
             },
@@ -97,6 +104,7 @@ def _chat_stream(
                 ),
                 "sql": "",
                 "python": "",
+                "warning": "",
                 "conversation_id": conversation.id,
                 "conversation_title": conversation.title,
             },
@@ -108,6 +116,7 @@ def _chat_stream(
                 "answer": f"Chat processing failed: {exc}",
                 "sql": "",
                 "python": "",
+                "warning": "",
                 "conversation_id": conversation.id,
                 "conversation_title": conversation.title,
             },
@@ -116,7 +125,11 @@ def _chat_stream(
 
 
 @router.post("/chat")
-def chat(request: ChatRequest, db: Session = Depends(get_db_session)) -> StreamingResponse:
+def chat(
+    request: ChatRequest,
+    db: Session = Depends(get_db_session),
+    current_user: User | None = Depends(get_current_user_optional),
+) -> StreamingResponse:
     if not request.messages:
         raise HTTPException(status_code=400, detail="messages cannot be empty")
 
@@ -135,10 +148,15 @@ def chat(request: ChatRequest, db: Session = Depends(get_db_session)) -> Streami
         )
         if conversation is None:
             raise HTTPException(status_code=404, detail="Conversation not found")
+        ensure_chat_access(conversation, current_user)
 
     if conversation is None:
         generated_title = latest_user_message[:60].strip() or "New chat"
-        conversation = Conversation(title=generated_title, dataset_id=request.dataset_id)
+        conversation = Conversation(
+            title=generated_title,
+            dataset_id=request.dataset_id,
+            user_id=current_user.id if current_user else None,
+        )
         db.add(conversation)
         db.commit()
         db.refresh(conversation)

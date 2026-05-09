@@ -50,9 +50,15 @@ export async function POST(req: Request): Promise<Response> {
         ]
       : []);
 
+  const upstreamHeaders: Record<string, string> = { "Content-Type": "application/json" };
+  const authorization = req.headers.get("authorization");
+  if (authorization) {
+    upstreamHeaders.Authorization = authorization;
+  }
+
   const upstream = await fetch(`${BACKEND_URL}/chat`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: upstreamHeaders,
     body: JSON.stringify({
       dataset_id: datasetId,
       conversation_id: body.conversation_id,
@@ -107,10 +113,12 @@ export async function POST(req: Request): Promise<Response> {
                 answer?: string;
                 sql?: string;
                 python?: string;
+                warning?: string;
               };
               const text = encodeCodeMeta(parsed.answer ?? "", {
                 sql: parsed.sql ?? "",
                 python: parsed.python ?? "",
+                warning: parsed.warning ?? "",
               });
               writer.write({
                 type: "text-delta",

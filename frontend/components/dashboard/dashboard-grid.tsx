@@ -25,6 +25,7 @@ type DashboardGridProps = {
   layout: DashboardLayoutItem[];
   onLayoutChange: (layout: DashboardLayoutItem[]) => void;
   onRemoveItem: (itemId: string) => void;
+  readOnly?: boolean;
 };
 
 export function DashboardGrid({
@@ -32,6 +33,7 @@ export function DashboardGrid({
   layout,
   onLayoutChange,
   onRemoveItem,
+  readOnly = false,
 }: DashboardGridProps) {
   if (!items.length) {
     return (
@@ -63,12 +65,54 @@ export function DashboardGrid({
     onLayoutChange(next);
   };
 
+  const card = (item: DashboardItem, itemLayout: DashboardLayoutItem) => (
+    <div className="h-full rounded-lg border bg-background p-2 shadow-sm">
+      <div
+        className={
+          readOnly
+            ? "mb-2 flex items-center justify-between rounded px-1 py-0.5"
+            : "dashboard-drag-handle mb-2 flex cursor-move items-center justify-between rounded px-1 py-0.5"
+        }
+      >
+        <p className="text-xs font-medium text-muted-foreground">
+          {readOnly ? "Chart" : "Drag"}
+        </p>
+        {!readOnly ? (
+          <button
+            type="button"
+            className="no-drag h-6 rounded px-2 text-xs text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            onClick={() => onRemoveItem(item.id)}
+          >
+            Remove
+          </button>
+        ) : null}
+      </div>
+      <ChartCard spec={item.spec} title={item.title} />
+    </div>
+  );
+
   return (
     <div className="rounded-lg border bg-card p-3">
       <div className="relative min-h-[680px] rounded-md bg-background/40">
         {items.map((item) => {
           const itemLayout =
             withDefaults.find((entry) => entry.i === item.id) ?? withDefaults[0];
+          if (readOnly) {
+            return (
+              <div
+                key={item.id}
+                className="absolute rounded-lg"
+                style={{
+                  left: itemLayout.x,
+                  top: itemLayout.y,
+                  width: itemLayout.w,
+                  height: itemLayout.h,
+                }}
+              >
+                {card(item, itemLayout)}
+              </div>
+            );
+          }
           return (
             <Rnd
               key={item.id}
@@ -102,21 +146,7 @@ export function DashboardGrid({
                 );
               }}
             >
-              <div className="h-full rounded-lg border bg-background p-2 shadow-sm">
-                <div className="dashboard-drag-handle mb-2 flex cursor-move items-center justify-between rounded px-1 py-0.5">
-                  <p className="text-xs font-medium text-muted-foreground">
-                    Drag
-                  </p>
-                  <button
-                    type="button"
-                    className="no-drag h-6 rounded px-2 text-xs text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                    onClick={() => onRemoveItem(item.id)}
-                  >
-                    Remove
-                  </button>
-                </div>
-                <ChartCard spec={item.spec} title={item.title} />
-              </div>
+              {card(item, itemLayout)}
             </Rnd>
           );
         })}

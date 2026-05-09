@@ -13,3 +13,8 @@ sqlalchemy
 cryptography
 psycopg2-binary
 pymysql
+passlib[bcrypt]
+# passlib 1.7.4 breaks on bcrypt>=4.1 (missing __about__, 72-byte checks in self-test)
+bcrypt>=4.0.1,<4.1
+PyJWT
+email-validator

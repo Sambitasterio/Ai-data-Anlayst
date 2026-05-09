@@ -6,7 +6,7 @@ Talk to your data with a full-stack app:
 - execute SQL/Python tool paths
 - stream responses in chat UI
 
-This README reflects the current build status through **Phase 15**.
+This README reflects the current build status through **Phase 16**.
 
 ## Current Status
 
@@ -27,6 +27,7 @@ Completed phases:
 - Phase 13: dashboard layout with pin-able, drag-resize chart cards per conversation
 - Phase 14: polish pass (skeletons, toasts, empty states, transitions, mobile UI, command palette)
 - Phase 15: SQL DB connector (Postgres/MySQL/SQLite) with encrypted credentials + schema-aware prompts
+- Phase 16: accounts + JWT API, NextAuth (credentials + optional GitHub), dashboard share links (view/edit)
 
 ## Project Structure
 
@@ -82,17 +83,26 @@ Chat page: `http://localhost:3000/chat`
 
 ## Environment Variables
 
-Copy `.env.example` to `.env` at repo root:
+Copy `.env.example` to `.env` at repo root (backend), and create `frontend/.env.local` for NextAuth:
+
+**Repo root `.env` (backend):** include at least `JWT_SECRET`, and `AUTH_SYNC_SECRET` if you use GitHub sign-in.
+
+**`frontend/.env.local`:**
 
 ```bash
-OPENAI_API_KEY=sk-...
-GEMINI_API_KEY=
-GROQ_API_KEY=
+NEXTAUTH_SECRET=<openssl rand -base64 32>
+NEXTAUTH_URL=http://localhost:3000
+AUTH_SYNC_SECRET=<same value as backend AUTH_SYNC_SECRET>
+BACKEND_URL=http://127.0.0.1:8000
+# Optional GitHub OAuth
+GITHUB_ID=
+GITHUB_SECRET=
 ```
 
 Notes:
 - App works without `OPENAI_API_KEY` using fallback logic.
-- With OpenAI key configured, agent tool routing becomes model-driven.
+- Signed-in users only see their own conversations; unsigned users only see conversations with no owner (legacy anonymous chats).
+- Share links are public: `/share/<token>` (no login).
 
 ## What Works Right Now
 
@@ -102,8 +112,10 @@ Notes:
 - Dataset listing: `GET /datasets`
 - Dataset preview: `GET /datasets/{id}/preview`
 - SSE chat: `POST /chat`
-- Conversation history list/detail: `GET /conversations`, `GET /conversations/{id}`
+- Conversation history list/detail: `GET /conversations`, `GET /conversations/{id}` (optional `Authorization: Bearer <jwt>`)
 - Conversation actions: `POST /conversations`, `PATCH /conversations/{id}`, `DELETE /conversations/{id}`
+- Auth: `POST /auth/register`, `POST /auth/login`, `POST /auth/oauth-sync` (internal, for GitHub sync)
+- Shared dashboard (public): `GET /shared/{token}`, `PATCH /shared/{token}/dashboard` (if share permission is `edit`)
 - Agent graph transitions streamed as thought events
 
 ### Agent Tools
@@ -135,6 +147,9 @@ Notes:
 - External SQL source selection in chat dataset picker
 - Automatic schema introspection attached to agent context for SQL sources
 - Read-only SQL guardrails for internal and external query execution
+- Register / login pages (`/register`, `/login`); session forwards JWT to `/api/chat` and conversation APIs
+- Copy **view** or **edit** share links from the chat dashboard (owner must be signed in)
+- Public **view-only** or **collaborative edit** dashboard at `/share/{token}` (`DashboardGrid` read-only or draggable)
 
 ## API Quick Reference
 
@@ -169,8 +184,9 @@ curl --no-buffer -N \
 
 - Dataset registry is in-memory; after backend restart, re-upload files.
 - Conversation history is persisted in SQLite, but linked dataset IDs may become stale after backend restart.
+- Chats created while logged out are not migrated when you sign in (they stay in the anonymous list).
 - Additional sandbox hardening for Python execution is still planned.
 
 ## Next Planned Phase
 
-Phase 16: save/share dashboards with auth, public links, and permissions.
+Phase 17: automated tests (pytest + Playwright) and CI.

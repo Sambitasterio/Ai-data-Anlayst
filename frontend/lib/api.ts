@@ -1,5 +1,11 @@
+import { authHeaders } from "./auth-token";
+
 export const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://127.0.0.1:8000";
+
+function withAuth(headers?: Record<string, string>): Record<string, string> {
+  return { ...authHeaders(), ...headers };
+}
 
 export type DatasetColumn = {
   name: string;
@@ -62,6 +68,39 @@ export type SQLConnectionStatus = {
   schema: SQLTableSchema[];
 };
 
+export type SharedDashboardPayload = {
+  conversation_id: string;
+  title: string;
+  permission: string;
+  dashboard_layout: Array<Record<string, unknown>>;
+  dashboard_items: Array<Record<string, unknown>>;
+};
+
+export type ShareLinkResponse = {
+  token: string;
+  permission: string;
+};
+
+export async function registerAccount(input: {
+  email: string;
+  password: string;
+  name?: string;
+}): Promise<{ access_token: string; user: { id: string; email: string; name: string | null } }> {
+  const response = await fetch(`${BACKEND_URL}/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(message || "Registration failed.");
+  }
+  return (await response.json()) as {
+    access_token: string;
+    user: { id: string; email: string; name: string | null };
+  };
+}
+
 export async function listDatasets(): Promise<DatasetInfo[]> {
   const response = await fetch(`${BACKEND_URL}/datasets`, { cache: "no-store" });
   if (!response.ok) {
@@ -98,7 +137,10 @@ export async function uploadDataset(file: File): Promise<DatasetInfo> {
 }
 
 export async function listConversations(): Promise<ConversationSummary[]> {
-  const response = await fetch(`${BACKEND_URL}/conversations`, { cache: "no-store" });
+  const response = await fetch(`${BACKEND_URL}/conversations`, {
+    cache: "no-store",
+    headers: withAuth(),
+  });
   if (!response.ok) {
     throw new Error("Failed to fetch conversations.");
   }
@@ -108,6 +150,7 @@ export async function listConversations(): Promise<ConversationSummary[]> {
 export async function getConversation(conversationId: string): Promise<ConversationDetail> {
   const response = await fetch(`${BACKEND_URL}/conversations/${conversationId}`, {
     cache: "no-store",
+    headers: withAuth(),
   });
   if (!response.ok) {
     throw new Error("Failed to fetch conversation.");
@@ -121,7 +164,7 @@ export async function createConversation(input: {
 }): Promise<ConversationSummary> {
   const response = await fetch(`${BACKEND_URL}/conversations`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: withAuth({ "Content-Type": "application/json" }),
     body: JSON.stringify(input),
   });
   if (!response.ok) {
@@ -136,7 +179,7 @@ export async function renameConversation(
 ): Promise<ConversationSummary> {
   const response = await fetch(`${BACKEND_URL}/conversations/${conversationId}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
+    headers: withAuth({ "Content-Type": "application/json" }),
     body: JSON.stringify({ title }),
   });
   if (!response.ok) {
@@ -148,6 +191,7 @@ export async function renameConversation(
 export async function deleteConversation(conversationId: string): Promise<void> {
   const response = await fetch(`${BACKEND_URL}/conversations/${conversationId}`, {
     method: "DELETE",
+    headers: withAuth(),
   });
   if (!response.ok) {
     throw new Error("Failed to delete conversation.");
@@ -163,13 +207,66 @@ export async function updateConversationDashboard(
 ): Promise<ConversationSummary> {
   const response = await fetch(`${BACKEND_URL}/conversations/${conversationId}/dashboard`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
+    headers: withAuth({ "Content-Type": "application/json" }),
     body: JSON.stringify(input),
   });
   if (!response.ok) {
     throw new Error("Failed to save dashboard.");
   }
   return (await response.json()) as ConversationSummary;
+}
+
+export async function createShareLink(
+  conversationId: string,
+  permission: "view" | "edit"
+): Promise<ShareLinkResponse> {
+  const response = await fetch(`${BACKEND_URL}/conversations/${conversationId}/share`, {
+    method: "POST",
+    headers: withAuth({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ permission }),
+  });
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(message || "Failed to create share link.");
+  }
+  return (await response.json()) as ShareLinkResponse;
+}
+
+export async function revokeShareLink(conversationId: string): Promise<void> {
+  const response = await fetch(`${BACKEND_URL}/conversations/${conversationId}/share`, {
+    method: "DELETE",
+    headers: withAuth(),
+  });
+  if (!response.ok) {
+    throw new Error("Failed to revoke share link.");
+  }
+}
+
+export async function fetchSharedDashboard(token: string): Promise<SharedDashboardPayload> {
+  const response = await fetch(`${BACKEND_URL}/shared/${token}`, { cache: "no-store" });
+  if (!response.ok) {
+    throw new Error("Failed to load shared dashboard.");
+  }
+  return (await response.json()) as SharedDashboardPayload;
+}
+
+export async function updateSharedDashboard(
+  token: string,
+  input: {
+    dashboard_layout: Array<Record<string, unknown>>;
+    dashboard_items: Array<Record<string, unknown>>;
+  }
+): Promise<SharedDashboardPayload> {
+  const response = await fetch(`${BACKEND_URL}/shared/${token}/dashboard`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(message || "Failed to update shared dashboard.");
+  }
+  return (await response.json()) as SharedDashboardPayload;
 }
 
 export async function connectSqlDatabase(input: {
@@ -184,7 +281,7 @@ export async function connectSqlDatabase(input: {
 }): Promise<SQLConnectionStatus> {
   const response = await fetch(`${BACKEND_URL}/sql/connect`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: withAuth({ "Content-Type": "application/json" }),
     body: JSON.stringify(input),
   });
   if (!response.ok) {
@@ -203,7 +300,10 @@ export async function getSqlStatus(): Promise<SQLConnectionStatus> {
 }
 
 export async function disconnectSqlDatabase(): Promise<void> {
-  const response = await fetch(`${BACKEND_URL}/sql/disconnect`, { method: "POST" });
+  const response = await fetch(`${BACKEND_URL}/sql/disconnect`, {
+    method: "POST",
+    headers: withAuth(),
+  });
   if (!response.ok) {
     throw new Error("Failed to disconnect SQL database.");
   }

@@ -1,6 +1,7 @@
 export type CodeMeta = {
   sql: string;
   python: string;
+  warning?: string;
 };
 
 const META_PREFIX = "\n[[CODE_META]]";
@@ -14,7 +15,7 @@ export function decodeCodeMeta(text: string): { content: string; meta: CodeMeta 
   if (markerIndex === -1) {
     return {
       content: text,
-      meta: { sql: "", python: "" },
+      meta: { sql: "", python: "", warning: undefined },
     };
   }
 
@@ -27,12 +28,13 @@ export function decodeCodeMeta(text: string): { content: string; meta: CodeMeta 
       meta: {
         sql: parsed.sql ?? "",
         python: parsed.python ?? "",
+        warning: parsed.warning,
       },
     };
   } catch {
     return {
       content: text,
-      meta: { sql: "", python: "" },
+      meta: { sql: "", python: "", warning: undefined },
     };
   }
 }

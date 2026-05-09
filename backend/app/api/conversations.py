@@ -1,10 +1,12 @@
 import json
+import secrets
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.api.deps import ensure_conversation_owner, get_current_user_optional
 from app.core.database import get_db_session
-from app.models import Conversation, ConversationMessage
+from app.models import Conversation, ConversationMessage, User
 from app.schemas import (
     ConversationCreateRequest,
     ConversationDashboardUpdateRequest,
@@ -12,6 +14,8 @@ from app.schemas import (
     ConversationMessageResponse,
     ConversationSummaryResponse,
     ConversationUpdateRequest,
+    ShareLinkRequest,
+    ShareLinkResponse,
 )
 
 
@@ -43,8 +47,16 @@ def _to_summary(conversation: Conversation) -> ConversationSummaryResponse:
 
 
 @router.get("", response_model=list[ConversationSummaryResponse])
-def list_conversations(db: Session = Depends(get_db_session)) -> list[ConversationSummaryResponse]:
-    conversations = db.query(Conversation).order_by(Conversation.updated_at.desc()).all()
+def list_conversations(
+    db: Session = Depends(get_db_session),
+    current_user: User | None = Depends(get_current_user_optional),
+) -> list[ConversationSummaryResponse]:
+    query = db.query(Conversation)
+    if current_user is None:
+        query = query.filter(Conversation.user_id.is_(None))
+    else:
+        query = query.filter(Conversation.user_id == current_user.id)
+    conversations = query.order_by(Conversation.updated_at.desc()).all()
     return [_to_summary(item) for item in conversations]
 
 
@@ -52,11 +64,13 @@ def list_conversations(db: Session = Depends(get_db_session)) -> list[Conversati
 def create_conversation(
     request: ConversationCreateRequest,
     db: Session = Depends(get_db_session),
+    current_user: User | None = Depends(get_current_user_optional),
 ) -> ConversationSummaryResponse:
     title = (request.title or "").strip() or "New chat"
     conversation = Conversation(
         title=title,
         dataset_id=request.dataset_id,
+        user_id=current_user.id if current_user else None,
         dashboard_layout="[]",
         dashboard_items="[]",
     )
@@ -70,10 +84,12 @@ def create_conversation(
 def get_conversation(
     conversation_id: str,
     db: Session = Depends(get_db_session),
+    current_user: User | None = Depends(get_current_user_optional),
 ) -> ConversationDetailResponse:
     conversation = db.query(Conversation).filter(Conversation.id == conversation_id).first()
     if conversation is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
+    ensure_conversation_owner(conversation, current_user)
 
     messages = db.query(ConversationMessage).filter(
         ConversationMessage.conversation_id == conversation_id
@@ -98,6 +114,7 @@ def rename_conversation(
     conversation_id: str,
     request: ConversationUpdateRequest,
     db: Session = Depends(get_db_session),
+    current_user: User | None = Depends(get_current_user_optional),
 ) -> ConversationSummaryResponse:
     title = request.title.strip()
     if not title:
@@ -106,6 +123,7 @@ def rename_conversation(
     conversation = db.query(Conversation).filter(Conversation.id == conversation_id).first()
     if conversation is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
+    ensure_conversation_owner(conversation, current_user)
 
     conversation.title = title
     db.commit()
@@ -114,10 +132,15 @@ def rename_conversation(
 
 
 @router.delete("/{conversation_id}")
-def delete_conversation(conversation_id: str, db: Session = Depends(get_db_session)) -> dict[str, bool]:
+def delete_conversation(
+    conversation_id: str,
+    db: Session = Depends(get_db_session),
+    current_user: User | None = Depends(get_current_user_optional),
+) -> dict[str, bool]:
     conversation = db.query(Conversation).filter(Conversation.id == conversation_id).first()
     if conversation is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
+    ensure_conversation_owner(conversation, current_user)
 
     db.delete(conversation)
     db.commit()
@@ -129,13 +152,55 @@ def update_dashboard(
     conversation_id: str,
     request: ConversationDashboardUpdateRequest,
     db: Session = Depends(get_db_session),
+    current_user: User | None = Depends(get_current_user_optional),
 ) -> ConversationSummaryResponse:
     conversation = db.query(Conversation).filter(Conversation.id == conversation_id).first()
     if conversation is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
+    ensure_conversation_owner(conversation, current_user)
 
     conversation.dashboard_layout = json.dumps(request.dashboard_layout)
     conversation.dashboard_items = json.dumps(request.dashboard_items)
     db.commit()
     db.refresh(conversation)
     return _to_summary(conversation)
+
+
+@router.post("/{conversation_id}/share", response_model=ShareLinkResponse)
+def create_share_link(
+    conversation_id: str,
+    request: ShareLinkRequest,
+    db: Session = Depends(get_db_session),
+    current_user: User | None = Depends(get_current_user_optional),
+) -> ShareLinkResponse:
+    conversation = db.query(Conversation).filter(Conversation.id == conversation_id).first()
+    if conversation is None:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    ensure_conversation_owner(conversation, current_user)
+    if current_user is None:
+        raise HTTPException(status_code=401, detail="Sign in to create a share link")
+
+    token = secrets.token_urlsafe(24)
+    conversation.share_token = token
+    conversation.share_permission = request.permission
+    db.commit()
+    return ShareLinkResponse(token=token, permission=request.permission)
+
+
+@router.delete("/{conversation_id}/share")
+def revoke_share_link(
+    conversation_id: str,
+    db: Session = Depends(get_db_session),
+    current_user: User | None = Depends(get_current_user_optional),
+) -> dict[str, bool]:
+    conversation = db.query(Conversation).filter(Conversation.id == conversation_id).first()
+    if conversation is None:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    ensure_conversation_owner(conversation, current_user)
+    if current_user is None:
+        raise HTTPException(status_code=401, detail="Sign in to revoke share link")
+
+    conversation.share_token = None
+    conversation.share_permission = None
+    db.commit()
+    return {"ok": True}

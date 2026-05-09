@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -73,6 +75,29 @@ class ConversationSummaryResponse(BaseModel):
 
 class ConversationDetailResponse(ConversationSummaryResponse):
     messages: list[ConversationMessageResponse]
+
+
+class UserPublicResponse(BaseModel):
+    id: str
+    email: str
+    name: str | None = None
+
+
+class ShareLinkRequest(BaseModel):
+    permission: Literal["view", "edit"]
+
+
+class ShareLinkResponse(BaseModel):
+    token: str
+    permission: str
+
+
+class SharedDashboardResponse(BaseModel):
+    conversation_id: str
+    title: str
+    permission: str
+    dashboard_layout: list[dict[str, object]] = Field(default_factory=list)
+    dashboard_items: list[dict[str, object]] = Field(default_factory=list)
 
 
 class SQLConnectionConnectRequest(BaseModel):

@@ -7,6 +7,24 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
 
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[str] = mapped_column(
+        String(36),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+
 class Conversation(Base):
     __tablename__ = "conversations"
 
@@ -16,9 +34,17 @@ class Conversation(Base):
         default=lambda: str(uuid4()),
     )
     title: Mapped[str] = mapped_column(String(255), default="New chat")
+    user_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     dataset_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     dashboard_layout: Mapped[str] = mapped_column(Text(), default="[]")
     dashboard_items: Mapped[str] = mapped_column(Text(), default="[]")
+    share_token: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
+    share_permission: Mapped[str | None] = mapped_column(String(8), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -30,6 +56,8 @@ class Conversation(Base):
         onupdate=func.now(),
         nullable=False,
     )
+
+    owner: Mapped["User | None"] = relationship("User")
 
     messages: Mapped[list["ConversationMessage"]] = relationship(
         back_populates="conversation",

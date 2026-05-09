@@ -198,7 +198,7 @@ ai-data-analyst/
 | 13 | Dashboard layout (drag-resize chart cards) | ✅ | — | `start phase 13` |
 | 14 | Polish: dark mode, animations, error states, skeletons | ✅ | — | `start phase 14` |
 | 15 | SQL DB connector (Postgres / MySQL / SQLite) | ✅ | — | `start phase 15` |
-| 16 | Save / share dashboards (persistence) | ⬜ | — | `start phase 16` |
+| 16 | Save / share dashboards (persistence) | ✅ | — | `start phase 16` |
 | 17 | Tests (pytest backend + Playwright e2e) | ⬜ | — | `start phase 17` |
 | 18 | Deploy (Vercel frontend + Fly.io/Railway backend) | ⬜ | — | `start phase 18` |
 
@@ -325,9 +325,9 @@ ai-data-analyst/
 
 ### Phase 16 — Save / share
 
-- [ ] User auth (NextAuth — magic link or GitHub)
-- [ ] Public share links for dashboards
-- [ ] Permissions (view / edit)
+- [x] User auth (NextAuth — credentials + optional GitHub; sync via `AUTH_SYNC_SECRET`)
+- [x] Public share links for dashboards (`GET /shared/{token}`, token on conversation)
+- [x] Permissions (view / edit) for share links; owner-only conversation APIs when JWT present
 
 ### Phase 17 — Tests
 
@@ -410,6 +410,18 @@ GROQ_API_KEY=
 
 ## Future Work
 
+### AI Data Analyst — product & reliability
+
+The chat agent today mixes **keyword-based plans** (fixed SQL/Python), **optional LLM-generated SQL** (`OPENAI_API_KEY`), and a **preview fallback** (`SELECT * … LIMIT 5`) when nothing else matches. That can look like a correct answer when it is only a sample of rows.
+
+**Suggested follow-ups:**
+
+- **Trust & transparency** — Keep improving user-visible signals when the reply is a template, preview fallback, or error (warnings in chat are a start; extend to metrics/logging).
+- **Natural language coverage** — Either expand **deterministic routes** for common question shapes (filters, top-N, group-bys, schema asks) **or** invest in a single **validated NL→SQL** path (LLM → read-only check → execute → retry with error feedback).
+- **Align implementation with vision docs** — `PROJECT.md` still describes a fuller LangGraph “plan/execute/reflect” loop; the current graph is intentionally minimal; document the real routing matrix or refactor toward the documented loop.
+- **Live SQL (`sql:` datasets)** — Same robustness for connection-backed questions (schema in context, safe SQL against the right dialect).
+- **Tests (Phase 17)** — Regression tests for planner branches, DuckDB `{dataset}` rewriting, and SSE payload shape (`warning`, `sql`, `python`).
+
 ### Next project after this: **Travel Planner Agent**
 
 A multi-tool LangChain agent that takes a prompt like *"5 days in Tokyo, $2000 budget, vegetarian"* and produces a full day-by-day itinerary with maps, weather, and bookings.
@@ -446,9 +458,9 @@ Use this section when sharing the project with another developer/agent so they c
 
 ### Current completion checkpoint
 
-- Phases **0 → 15** are completed.
-- Last completed phase: **15 (SQL DB connector)**.
-- Next phase to start: **16 (Save / share)**.
+- Phases **0 → 16** are completed.
+- Last completed phase: **16 (Save / share)**.
+- Next phase to start: **17 (Tests)**.
 
 ### Verified runtime stack
 
@@ -471,4 +483,4 @@ Use this section when sharing the project with another developer/agent so they c
 
 1. Run backend and frontend.
 2. Confirm `/chat` works with uploaded sample dataset.
-3. Start Phase 16 checklist in this file from top to bottom.
+3. Start Phase 17 checklist in this file from top to bottom.

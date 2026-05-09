@@ -5,6 +5,8 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { AnimatePresence, motion } from "framer-motion";
 import { Command, LayoutDashboard, MessageSquareDashed, PanelLeft } from "lucide-react";
+import { signOut, useSession } from "next-auth/react";
+import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
 
@@ -21,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   connectSqlDatabase,
+  createShareLink,
   deleteConversation,
   disconnectSqlDatabase,
   getSqlStatus,
@@ -29,17 +32,20 @@ import {
   listConversations,
   listDatasets,
   renameConversation,
+  revokeShareLink,
   updateConversationDashboard,
   type ConversationMessage,
   type ConversationSummary,
   type DatasetInfo,
   type SQLConnectionStatus,
 } from "@/lib/api";
+import { getBackendAuthToken, setBackendAuthToken } from "@/lib/auth-token";
 import { decodeCodeMeta } from "@/lib/code-meta";
 import { extractChartSpecFromText } from "@/lib/plotly-loader";
 import { cn } from "@/lib/utils";
 
 export function ChatWindow() {
+  const { data: session, status: sessionStatus } = useSession();
   const [datasetId, setDatasetId] = useState("");
   const [datasets, setDatasets] = useState<DatasetInfo[]>([]);
   const [datasetMeta, setDatasetMeta] = useState<DatasetInfo | null>(null);
@@ -89,6 +95,7 @@ export function ChatWindow() {
         trigger,
         messageId,
       }) {
+        const authToken = getBackendAuthToken();
         return {
           body: {
             id,
@@ -98,6 +105,7 @@ export function ChatWindow() {
             conversation_id: conversationIdRef.current || undefined,
             messages: outgoingMessages,
           },
+          headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
         };
       },
     }),
@@ -110,6 +118,12 @@ export function ChatWindow() {
     () => Boolean(datasetId) && input.trim().length > 0 && !isLoading,
     [datasetId, input, isLoading]
   );
+
+  useEffect(() => {
+    const token = session?.backendAccessToken;
+    setBackendAuthToken(token);
+    return () => setBackendAuthToken(undefined);
+  }, [session?.backendAccessToken]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -456,6 +470,37 @@ export function ChatWindow() {
     void saveDashboard(nextLayout, nextItems);
   };
 
+  const handleShareDashboard = async (permission: "view" | "edit") => {
+    if (!conversationId) {
+      toast.error("Open or start a conversation first.");
+      return;
+    }
+    if (!session?.backendAccessToken) {
+      toast.error("Sign in to create a share link.");
+      return;
+    }
+    try {
+      const { token } = await createShareLink(conversationId, permission);
+      const url = `${window.location.origin}/share/${token}`;
+      await navigator.clipboard.writeText(url);
+      toast.success(`Public ${permission} link copied to clipboard.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not create share link.");
+    }
+  };
+
+  const handleRevokeShare = async () => {
+    if (!conversationId || !session?.backendAccessToken) {
+      return;
+    }
+    try {
+      await revokeShareLink(conversationId);
+      toast.success("Share link revoked.");
+    } catch {
+      toast.error("Could not revoke share link.");
+    }
+  };
+
   const commandActions = [
     {
       label: "New chat",
@@ -618,7 +663,27 @@ export function ChatWindow() {
           </Button>
         </div>
 
-        <div className="hidden items-center justify-end lg:flex">
+        <div className="hidden items-center justify-between gap-2 lg:flex">
+          <div className="truncate text-sm text-muted-foreground">
+            {session?.user?.email ? (
+              <>
+                <span className="hidden xl:inline">{session.user.email}</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="ml-2 h-8"
+                  onClick={() => void signOut({ callbackUrl: "/chat" })}
+                >
+                  Sign out
+                </Button>
+              </>
+            ) : (
+              <Link href="/login" className="text-primary underline">
+                Sign in
+              </Link>
+            )}
+          </div>
           <Button type="button" variant="outline" size="sm" onClick={() => setIsCommandPaletteOpen(true)}>
             <Command className="mr-2 h-4 w-4" />
             Command Palette
@@ -785,8 +850,45 @@ export function ChatWindow() {
           {datasetSummary ? ` · ${datasetSummary}` : ""}
         </div>
 
+        {!session && sessionStatus !== "loading" ? (
+          <div className="rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground">
+            <Link className="font-medium text-primary underline" href="/login">
+              Sign in
+            </Link>{" "}
+            to save chats to your account and share dashboards.{" "}
+            <Link className="underline" href="/register">
+              Register
+            </Link>
+          </div>
+        ) : null}
+
         <div className="space-y-2">
-          <h3 className="text-sm font-medium">Dashboard</h3>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <h3 className="text-sm font-medium">Dashboard</h3>
+            {conversationId && session ? (
+              <div className="flex flex-wrap gap-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void handleShareDashboard("view")}
+                >
+                  Copy view link
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void handleShareDashboard("edit")}
+                >
+                  Copy edit link
+                </Button>
+                <Button type="button" size="sm" variant="ghost" onClick={() => void handleRevokeShare()}>
+                  Revoke share
+                </Button>
+              </div>
+            ) : null}
+          </div>
           <DashboardGrid
             items={dashboardItems}
             layout={dashboardLayout}
@@ -820,6 +922,11 @@ export function ChatWindow() {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                     >
+                      {message.role === "assistant" && decoded.meta.warning ? (
+                        <div className="max-w-[85%] rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+                          {decoded.meta.warning}
+                        </div>
+                      ) : null}
                       <div className="max-w-[85%] rounded-lg bg-muted px-3 py-2 text-sm text-foreground">
                         Rendered chart from assistant response.
                       </div>
@@ -840,6 +947,11 @@ export function ChatWindow() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                   >
+                    {message.role === "assistant" && decoded.meta.warning ? (
+                      <div className="max-w-[85%] rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+                        {decoded.meta.warning}
+                      </div>
+                    ) : null}
                     <div
                       className={cn(
                         "max-w-[85%] rounded-lg px-3 py-2 text-sm",
