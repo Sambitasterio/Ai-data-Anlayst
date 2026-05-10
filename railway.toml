@@ -1,0 +1,7 @@
+# Railway dashboard: Root directory = repo root if using monorepo; set Dockerfile path below.
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+restartPolicyType = "on_failure"

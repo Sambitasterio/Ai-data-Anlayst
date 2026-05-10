@@ -1,0 +1,23 @@
+# Local production-like stack: API + persisted SQLite & uploads volume.
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      PORT: "8000"
+      JWT_SECRET: ${JWT_SECRET:-dev-docker-compose-change-me-32-characters!!}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      DATABASE_URL: sqlite:////data/app.db
+      AUTOLOAD_DEMO_SAMPLE: "${AUTOLOAD_DEMO_SAMPLE:-1}"
+      # Point browser frontends here (comma-separated origins)
+      CORS_ORIGINS: "${CORS_ORIGINS:-http://localhost:3000}"
+    volumes:
+      - api-data:/data
+      - api-uploads:/app/backend/uploads
+
+volumes:
+  api-data:
+  api-uploads:

@@ -60,3 +60,12 @@ jobs:
         run: npm run test:e2e
         env:
           PLAYWRIGHT_WEBSERVER_COMMAND: npm run start -- -p 3000
+
+  docker-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build API image
+        run: docker build -t ai-data-analyst-api:ci .
+

@@ -81,6 +81,14 @@ npx playwright install chromium
 PLAYWRIGHT_WEBSERVER_COMMAND="npm run start -- -p 3000" npm run test:e2e
 ```
 
+## Docker (API — repo root contains `Dockerfile`)
+
+```bash
+cd /c/AIML/ai-data-analyst
+docker compose build
+docker compose up
+```
+
 ## Common Troubleshooting
 
 ### Backend not reachable (`curl: (7) Failed to connect`)

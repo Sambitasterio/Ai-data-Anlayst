@@ -1,0 +1,12 @@
+{
+    "$schema": "https://openapi.vercel.sh/vercel.json",
+    "framework": null,
+    "installCommand": "cd frontend && npm install",
+    "buildCommand": "cd frontend && npm run build",
+    "outputDirectory": "frontend/.next",
+    "routes": [
+      { "src": "/api/(.*)", "dest": "https://ai-data-analyst-api-2026-sambit.vercel.app/$1" },
+      { "handle": "filesystem" },
+      { "src": "/(.*)", "dest": "/$1" }
+    ]
+  }

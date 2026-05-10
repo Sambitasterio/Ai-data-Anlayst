@@ -6,7 +6,7 @@ Talk to your data with a full-stack app:
 - execute SQL/Python tool paths
 - stream responses in chat UI
 
-This README reflects the current build status through **Phase 17**.
+This README reflects the current build status through **Phase 18** (deploy scaffolding + Docker).
 
 ## Current Status
 
@@ -29,6 +29,7 @@ Completed phases:
 - Phase 15: SQL DB connector (Postgres/MySQL/SQLite) with encrypted credentials + schema-aware prompts
 - Phase 16: accounts + JWT API, NextAuth (credentials + optional GitHub), dashboard share links (view/edit)
 - Phase 17: pytest (agent + DuckDB + API health) + Playwright smoke + GitHub Actions CI
+- Phase 18: Docker backend image, Compose, Fly/Railway stubs, Vercel + domain guidance (`DEPLOY.md`), optional demo CSV autoload (`AUTOLOAD_DEMO_SAMPLE`)
 
 ## Project Structure
 
@@ -110,6 +111,18 @@ PLAYWRIGHT_WEBSERVER_COMMAND="npm run start -- -p 3000" npm run test:e2e
 ```
 
 On GitHub Actions, `frontend` job runs `npm run build`, installs Chromium, and executes `npm run test:e2e` with the web server started by Playwright.
+
+### Deploy (Docker + hosts)
+
+See **[DEPLOY.md](./DEPLOY.md)** for **`docker compose`**, Fly.io, Railway, Vercel, **`CORS_ORIGINS`**, and **`DATABASE_URL`**.
+
+Quick Compose from repo root:
+
+```bash
+docker compose build && docker compose up
+```
+
+API defaults to `:8000` with a demo dataset seeded when **`AUTOLOAD_DEMO_SAMPLE=1`** (Compose default).
 
 ## Environment Variables
 

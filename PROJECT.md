@@ -200,7 +200,7 @@ ai-data-analyst/
 | 15 | SQL DB connector (Postgres / MySQL / SQLite) | ✅ | — | `start phase 15` |
 | 16 | Save / share dashboards (persistence) | ✅ | — | `start phase 16` |
 | 17 | Tests (pytest backend + Playwright e2e) | ✅ | — | `start phase 17` |
-| 18 | Deploy (Vercel frontend + Fly.io/Railway backend) | ⬜ | — | `start phase 18` |
+| 18 | Deploy (Vercel frontend + Fly.io/Railway backend) | ✅ | — | `start phase 18` |
 
 ---
 
@@ -337,11 +337,11 @@ ai-data-analyst/
 
 ### Phase 18 — Deploy
 
-- [ ] Dockerize backend
-- [ ] Deploy backend to Fly.io or Railway
-- [ ] Deploy frontend to Vercel
-- [ ] Custom domain + HTTPS
-- [ ] Demo dataset preloaded for visitors
+- [x] Dockerize backend (root **Dockerfile** + **docker-compose** + **`.dockerignore`**)
+- [x] Fly.io + Railway config stubs (**`fly.toml`**, **`railway.toml`**; provider-specific secrets/volumes documented)
+- [x] Vercel frontend (document **`frontend/`** root + env in **`DEPLOY.md`**)
+- [x] Custom domain + HTTPS (steps in **`DEPLOY.md`** — TLS via each host)
+- [x] Demo dataset preloaded (**`AUTOLOAD_DEMO_SAMPLE`**, **`app/fixtures/demo_sample.csv`**)
 
 ---
 
@@ -458,9 +458,9 @@ Use this section when sharing the project with another developer/agent so they c
 
 ### Current completion checkpoint
 
-- Phases **0 → 17** are completed.
-- Last completed phase: **17 (Tests)**.
-- Next phase to start: **18 (Deploy)**.
+- Phases **0 → 18** are completed (**roadmap MVP in this tracker**).
+- Last completed phase: **18 (Deploy)**.
+- Next logical work is **maintain**, **iterate on Future Work / product reliability**, or a new project (see roadmap / portfolio).
 
 ### Verified runtime stack
 
@@ -483,4 +483,4 @@ Use this section when sharing the project with another developer/agent so they c
 
 1. Run backend and frontend.
 2. Confirm `/chat` works with uploaded sample dataset.
-3. Start Phase 18 checklist in this file from top to bottom.
+3. For deploys follow **`DEPLOY.md`** (`docker compose`, Fly, Railway, Vercel).

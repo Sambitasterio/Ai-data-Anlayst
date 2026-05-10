@@ -11,6 +11,7 @@ from sqlalchemy import text
 from app.api.upload import router as upload_router
 from app.core.config import get_settings
 from app.core.database import Base, engine
+from app.core.deploy_utils import maybe_seed_demo_csv
 from app import models  # noqa: F401
 
 
@@ -58,6 +59,7 @@ def init_database() -> None:
             connection.execute(text("ALTER TABLE conversations ADD COLUMN share_token VARCHAR(64)"))
         if "share_permission" not in conversation_columns:
             connection.execute(text("ALTER TABLE conversations ADD COLUMN share_permission VARCHAR(8)"))
+    maybe_seed_demo_csv()
 
 
 app.include_router(upload_router)
